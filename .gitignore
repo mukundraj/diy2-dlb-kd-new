@@ -1,0 +1,6 @@
+sync_nek
+results/baseline/512
+results/constrained/512
+results/constrained/1024
+archive
+.DS_Store

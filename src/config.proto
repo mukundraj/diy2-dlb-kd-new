@@ -1,0 +1,91 @@
+message PBBoundGid
+{
+  required int32 gid = 1;
+  required int32 bound_gid = 2;
+}
+
+message PBBound
+{
+  required float x_min = 1;
+  required float y_min = 2;
+  required float x_max = 3;
+  required float y_max = 4;
+}
+
+message PBParticle
+{
+  required float x = 1;
+  required float y = 2;
+  optional float z = 3;
+  optional float t = 4;
+}
+
+message PBParticleArray
+{
+  repeated PBParticle pt = 1;
+}
+
+message PBConfig 
+{
+  optional int32 num_blocks = 1 [ default = 1 ]; 
+  required int32 nb_per_proc = 2 [ default = 1 ];
+  required int32 ghost_size = 3 [ default = 1 ]; 
+  required int32 epoch_size = 4 [ default = 250 ]; 
+  required int32 num_threads = 5 [ default = 1 ]; 
+
+  optional bool elastic_ghost = 6 [ default = false ];
+  optional int32 block_mem_limit = 7 [ default = 64 ];
+  optional bool debug = 8 [ default = false ]; 
+
+  optional bool kd_tree = 9 [ default = false ];
+  //optional bool baseline = 10 [ default = false ];
+  optional bool space_only = 11 [ default = false ];
+}
+
+message PBDataset
+{
+  enum DataType {
+    INT8 = 0; 
+    INT16 = 1; 
+    INT32 = 2; 
+    INT64 = 3; 
+    FLOAT32 = 4; 
+    FLOAT64 = 5; 
+  }
+
+  enum StorageOrder {
+    FIRST = 0; 
+    SECOND = 1; 
+    THIRD = 2; 
+    FOURTH = 3; 
+    FILE = 4;
+  }
+
+  message PBVariable {
+    required string name = 1; 
+    required DataType data_type = 2; 
+    optional bool big_endian = 3 [ default = false ]; 
+  }
+
+  message PBDimension {
+    required string name = 1; 
+    required StorageOrder storage_order = 2; 
+    required int32 size = 3; 
+  }
+
+  message PBRun {
+    required string run_id = 1; 
+    required string directory = 2; 
+    optional string pattern = 3 [ default = "*" ]; 
+    repeated string filenames = 4; 
+  }
+
+  required string name = 1; 
+
+  repeated PBRun runs = 2; 
+  repeated PBVariable variables = 3; 
+  repeated PBDimension dimensions = 4; 
+
+  repeated int32 timesteps_per_file = 5; 
+}
+
