@@ -1,8 +1,8 @@
 <config epoch_size="250" ghost_size="16" num_threads="1" debug="0" 
-  num_blocks="8"
+  num_blocks="2"
   nb_per_proc="1"
   elastic_ghost="1" 
-  block_mem_limit="512" 
+  block_mem_limit="48" 
   kd_tree="0">
 </config>
 
