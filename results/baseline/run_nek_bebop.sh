@@ -11,6 +11,7 @@
 #SBATCH --mail-user=mraj@lcrc.anl.gov
 #SBATCH --time=01:00:00
 
+
 srun -n 2 ./sync_nek configs_48/config.nek2.xml 2> 48/nek_02
 srun -n 4 ./sync_nek configs_48/config.nek4.xml 2> 48/nek_04
 srun -n 8 ./sync_nek configs_48/config.nek8.xml 2> 48/nek_08
