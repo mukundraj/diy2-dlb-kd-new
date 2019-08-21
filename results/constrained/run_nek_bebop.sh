@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH --job-name=baseline
+#SBATCH --job-name=constr
 #SBATCH --account=pedal
 #SBATCH --partition=knlall
 #SBATCH --constraint knl,quad,cache
