@@ -6,10 +6,10 @@
 #SBATCH --constraint knl,quad,cache
 #SBATCH --nodes=8
 #SBATCH --ntasks-per-node=64
-#SBATCH --output=<my_job_name>.out
-#SBATCH --error=<my_job_name>.error
+#SBATCH --output=baseline.%j.%N.out
+#SBATCH --error=baseline.%j.%N.error
 #SBATCH --mail-user=mraj@lcrc.anl.gov
-#SBATCH --time=0:015:00
+#SBATCH --time=0:010:00
 
 srun -n 2 ./sync_nek configs_48/config.nek2.xml 2> 48/nek_02
 srun -n 4 ./sync_nek configs_48/config.nek4.xml 2> 48/nek_04
