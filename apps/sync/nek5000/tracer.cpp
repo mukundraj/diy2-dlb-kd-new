@@ -27,7 +27,7 @@ void CSyncNekApp::initialize_particles(Block& b,
 {
 #if 1 // for k-d tree paper
     // {64, 128, 128} -> {256, 256, 256}
-  const int stride[3] = {16, 16, 16};
+  const int stride[3] = {256, 256, 256};
   // const int stride[3] = {512, 512, 512};
   //const int stride[3] = {8, 8, 8};
   const float gap[3] = {1.f/(stride[0]-1) * (float)(domain_size()[0]-1),
