@@ -4,12 +4,12 @@
 #SBATCH --account=pedal
 #SBATCH --partition=knlall
 #SBATCH --constraint knl,quad,cache
-#SBATCH --nodes=2
+#SBATCH --nodes=16
 #SBATCH --ntasks-per-node=32
 #SBATCH --output=baseline.%j.%N.out
 #SBATCH --error=baseline.%j.%N.error
 #SBATCH --mail-user=mraj@lcrc.anl.gov
-#SBATCH --time=01:00:00
+#SBATCH --time=00:30:00
 
 
 # srun -n 1 ./sync_nek configs_48/config.nek2.xml 2> 48/nek_01
