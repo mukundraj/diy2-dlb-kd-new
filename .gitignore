@@ -4,6 +4,7 @@ results/constrained/512
 results/constrained/1024
 archive
 build
+/CMakeLists.txt
 .DS_Store
 48/*
 96/*
