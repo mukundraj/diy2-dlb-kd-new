@@ -36,6 +36,7 @@ struct Particle {
   int num_rounds;
   float coords[4];
   bool finished;
+  int wgt;
 
   Particle() {
     id = 0;
@@ -43,6 +44,7 @@ struct Particle {
     num_rounds = 0;
     memset(coords, sizeof(float)*4, 0);
     finished = false;
+    wgt = 1;
   }
 
   const float& operator [](int i) const {return coords[i];}

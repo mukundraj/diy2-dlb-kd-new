@@ -606,6 +606,12 @@ bool CPTApp::parse_config(const std::string& filename)
       else _appconf.set_kd_tree(false);
     } 
 
+    if (pElem->Attribute("prediction")) {
+      int _prediction = _appconf.prediction();
+      pElem->QueryIntAttribute("prediction", &_prediction);
+      _appconf.set_prediction(_prediction);
+    } 
+
     /*if (pElem->Attribute("baseline")) {
       int _baseline = _appconf.baseline();
       pElem->QueryIntAttribute("baseline", &_baseline);

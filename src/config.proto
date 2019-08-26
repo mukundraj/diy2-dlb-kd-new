@@ -40,6 +40,7 @@ message PBConfig
   optional bool kd_tree = 9 [ default = false ];
   //optional bool baseline = 10 [ default = false ];
   optional bool space_only = 11 [ default = false ];
+  optional int32 prediction = 12 [default = 0];
 }
 
 message PBDataset

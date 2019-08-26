@@ -70,6 +70,8 @@ public:
     else return _appconf.space_only();
   }
 
+  int pred_val() const { return _appconf.prediction(); }
+
   bool is_ptinblock(const Block& b, const float* pt);
 
 protected:
