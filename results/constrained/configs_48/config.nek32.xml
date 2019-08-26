@@ -7,7 +7,7 @@
 </config>
 
 <dataset name="nek5000" file_format="NC_RECTILINEAR">
-  <run run_id="0" directory="/blues/gpfs/home/mraj/datasets/nek" pattern="nek5000.nc" />
+  <run run_id="0" directory="../" pattern="nek5000.nc" />
   <dimension name="x" storage_order="1" size="512" />
   <dimension name="y" storage_order="2" size="512" />
   <dimension name="z" storage_order="3" size="512" />
