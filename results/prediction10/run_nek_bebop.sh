@@ -5,7 +5,7 @@
 #SBATCH --partition=knlall
 #SBATCH --constraint knl,quad,cache
 #SBATCH --nodes=32
-#SBATCH --ntasks-per-node=32
+#SBATCH --ntasks-per-node=16
 #SBATCH --output=p10.%j.%N.out
 #SBATCH --error=p10.%j.%N.error
 #SBATCH --mail-user=mraj@lcrc.anl.gov
