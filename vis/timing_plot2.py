@@ -1,0 +1,113 @@
+'''
+This version plots the timing plot for bebop output files
+
+Started: 21 Aug 2019
+Updated: 27 Aug 2019 : read input folder from command line
+
+
+usage:
+python timing_plot2.py /Users/mukundraj/Desktop/work/projects/diy2-dlb-kd-new-copy/archive/bebop_190823/nogantt
+
+python timing_plot2.py /Users/mukundraj/Desktop/work/results/diy2-dlb-kd-new/bebop_190827/nogantt
+
+'''
+
+import numpy as np
+import os
+import matplotlib.pyplot as plt
+import shutil
+import sys
+from matplotlib.ticker import MaxNLocator
+
+# in_folder = "/Users/mukundraj/Desktop/work/projects/diy2-dlb-kd-new/archive/bebop_190822/nogantt/"
+# in_folder = "/Users/mukundraj/Desktop/work/projects/diy2-dlb-kd-new-copy/archive/bebop_190823/nogantt/"
+
+in_folder =  sys.argv[1] + "/"
+
+subfolders = ['prediction0/', 'prediction5/', 'prediction10/', 'prediction20/']
+# subfolders = ['baseline/', 'constrained/']
+mems = ['48/', '96/', '384/', 'unlim/']
+
+op_image_name = "timing.png"
+
+def kfunc(val):
+	return int(val.split('_')[1])
+
+def get_timings(fpath):
+
+	files = os.listdir(fpath)
+	files.sort(key=kfunc)
+	print files
+	times = []
+	for file in files:
+		with open(fpath+file) as fp:
+		   line = fp.readline()
+		   while line:
+		   		
+		   		sline = line.split('\t')
+		   		if sline[0]=='time_run=' :
+		   			times.append(float(sline[2].rstrip()))
+		   		line = fp.readline()
+
+	return times
+
+
+
+plt.title(op_image_name)
+plt.ylabel('time (s)')
+plt.xlabel('nprocs')
+
+
+
+for sf in subfolders:
+	for mem in mems:
+		folpath = in_folder+sf+mem
+		tim = get_timings(folpath)
+		if len(tim) == 7:
+			xs = [1, 2, 4, 8, 16, 32, 64]
+		elif len(tim) == 6:
+			xs = [16, 32, 64, 128, 256, 512]	
+		elif len(tim) == 10:
+			xs = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512]
+		elif len(tim) == 9:
+			xs = [2, 4, 8, 16, 32, 64, 128, 256, 512]
+		elif len(tim) == 5:
+			xs = [32, 64, 128, 256, 512]
+
+		if sf=='prediction0/':
+			styl = '-'
+		elif sf=='prediction5/':
+			styl = '--'
+		elif sf=='prediction10/':
+			styl = '-.'
+		elif sf=='prediction20/':
+			styl = ':'
+		else:
+			styl = "-"
+
+		if mem == '48/':
+			col = 'red'
+		elif mem == '96/':
+			col = 'blue'
+		elif mem == '384/':
+			col = 'green'
+		elif mem == 'unlim/':
+			col = 'orange'
+
+
+		lab = sf+mem
+		print lab, tim
+		plt.plot(xs, tim, label=lab, linestyle=styl, linewidth=2, color=col)
+
+# plt.gca().set_ylim(0, 400)
+
+plt.gca().set_xscale('log')
+
+plt.legend(loc='best', fontsize=12)
+plt.gca().minorticks_off()
+plt.gca().set_xticks(xs)
+plt.gca().set_xticklabels(xs)
+plt.show()
+plt.savefig(in_folder + op_image_name)
+
+
