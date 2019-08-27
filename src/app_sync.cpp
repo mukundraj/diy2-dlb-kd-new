@@ -149,6 +149,7 @@ void CPTApp_Sync::exec()
 #if STORE_PARTICLES
       std::vector<Particle> particles_first, particles_second;
 #endif
+      MPI_Barrier(comm_world());
       double kd_start = MPI_Wtime();
       int num_particles_before = 0;
       BOOST_FOREACH(int gid, gids()) {
@@ -445,6 +446,8 @@ void CPTApp_Sync::stat()
     fprintf(stderr, "time_io=\t\t%.3f\t\t%.3f\n", _time_io, _time_io/time_all);
     fprintf(stderr, "time_redistrib=\t\t%.3f\t\t%.3f\n", _time_kdtree, _time_kdtree/time_all);
     fprintf(stderr, "time_all=\t\t%.3f\n", time_all);
+    fprintf(stderr, "_time_trace=\t\t%.3f\n", _time_trace);
+    fprintf(stderr, "_time_kdtree=\t\t%.3f\n", _time_kdtree);
     fprintf(stderr, "--------------------------------------\n"); 
   }
 } 

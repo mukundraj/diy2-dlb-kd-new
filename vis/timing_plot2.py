@@ -37,7 +37,6 @@ def get_timings(fpath):
 
 	files = os.listdir(fpath)
 	files.sort(key=kfunc)
-	print files
 	times = []
 	for file in files:
 		with open(fpath+file) as fp:
@@ -45,10 +44,21 @@ def get_timings(fpath):
 		   while line:
 		   		
 		   		sline = line.split('\t')
+		   		if sline[0]=='time_init=' :
+		   			time_init = float(sline[2].rstrip())
+		   		if sline[0]=='time_purerun=' :
+		   			time_purerun = float(sline[2].rstrip())
+		   		if sline[0]=='time_all=' :
+		   			time_all = float(sline[2].rstrip())
+		   		if sline[0]=='time_io=' :
+		   			time_io = float(sline[2].rstrip())
 		   		if sline[0]=='time_run=' :
-		   			times.append(float(sline[2].rstrip()))
+		   			time_run = float(sline[2].rstrip())
+
 		   		line = fp.readline()
 
+		   times.append(time_run - time_purerun)
+		   # times.append(time_init)
 	return times
 
 
