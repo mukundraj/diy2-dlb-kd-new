@@ -290,6 +290,7 @@ CPTApp_Async::CPTApp_Async() :
   _time_kdtree(0),
   _time_exchange(0),
   _time_trace(0),
+  _time_prediction(0),
   _time_iexchange(0),
   _total_steps(0),
   _round_steps(0),

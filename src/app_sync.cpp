@@ -149,33 +149,52 @@ void CPTApp_Sync::exec()
 #if STORE_PARTICLES
       std::vector<Particle> particles_first, particles_second;
 #endif
-      MPI_Barrier(comm_world());
-      double kd_start = MPI_Wtime();
-      int num_particles_before = 0;
-      BOOST_FOREACH(int gid, gids()) {
+
+       BOOST_FOREACH(int gid, gids()) {
         Block &b = block(gid);
-    
-        // initialize particles at the first time execution
+
+                // initialize particles at the first time execution
         if (b.num_particles_initialized == -1) {
           initialize_particles(b, b.particles);
           b.num_particles_initialized = b.particles.size();
           b.num_particles_traced += b.particles.size();
           _local_init += b.num_particles_initialized;
-#if STORE_PARTICLES
-          gather_store_particles(count, b.particles); count ++;
-          gather_store_cores(b); // core bounds for split
-#endif
+          #if STORE_PARTICLES
+                    gather_store_particles(count, b.particles); count ++;
+                    gather_store_cores(b); // core bounds for split
+          #endif
         }
+
+
+      }
+
+
+    MPI_Barrier(comm_world());
+    double _time_pred_start = MPI_Wtime();   
+     
+    BOOST_FOREACH(int gid, gids()) {
+        Block &b = block(gid);
 
         if (pred_val()>0){
           // predict workload
           trace_particles_kdtree_predict(b, pred_val());
         }
 
+      }
+
+
+      MPI_Barrier(comm_world());
+      double kd_start = MPI_Wtime();
+      _time_prediction += kd_start - _time_pred_start;
+      int num_particles_before = 0;
+
+       BOOST_FOREACH(int gid, gids()) {
+        Block &b = block(gid);
+
         // load balance 
         pt_cons_kdtree_exchange(*_master, *_assigner, _divisions, space_only() ? 3 : _num_dims, space_only(), _block_size, _ghost_size, _constrained, false, false); 
 
-    }
+      }
 
       MPI_Barrier(comm_world());
       double end = MPI_Wtime();
@@ -448,6 +467,7 @@ void CPTApp_Sync::stat()
     fprintf(stderr, "time_all=\t\t%.3f\n", time_all);
     fprintf(stderr, "_time_trace=\t\t%.3f\n", _time_trace);
     fprintf(stderr, "_time_kdtree=\t\t%.3f\n", _time_kdtree);
+    fprintf(stderr, "_time_prediction=\t\t%.3f\n", _time_prediction);
     fprintf(stderr, "--------------------------------------\n"); 
   }
 } 

@@ -36,14 +36,18 @@ def kfunc(val):
 def get_timings(fpath):
 
 	files = os.listdir(fpath)
+	files = [file for file in files if file != ".DS_Store"]
 	files.sort(key=kfunc)
 	times = []
+	time_trace = 0
+	time_kdtree = 0
 	for file in files:
 		with open(fpath+file) as fp:
 		   line = fp.readline()
 		   while line:
 		   		
 		   		sline = line.split('\t')
+		   		print sline
 		   		if sline[0]=='time_init=' :
 		   			time_init = float(sline[2].rstrip())
 		   		if sline[0]=='time_purerun=' :
@@ -54,11 +58,13 @@ def get_timings(fpath):
 		   			time_io = float(sline[2].rstrip())
 		   		if sline[0]=='time_run=' :
 		   			time_run = float(sline[2].rstrip())
-
+		   		if sline[0]=='_time_trace=' :
+		   			time_trace = float(sline[2].rstrip())
+		   		if sline[0]=='_time_kdtree=' :
+		   			time_kdtree = float(sline[2].rstrip())
+		   			print time_kdtree
 		   		line = fp.readline()
-
-		   times.append(time_run - time_purerun)
-		   # times.append(time_init)
+		   times.append(time_kdtree)
 	return times
 
 

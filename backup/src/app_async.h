@@ -44,7 +44,7 @@ public: // interface
 
 protected:
   void stat();
-  mutable double _time_work, _time_kdtree, _time_exchange;
+  mutable double _time_work, _time_kdtree, _time_exchange, _time_prediction;
   mutable double _time_trace, _time_iexchange;
 
 protected:
