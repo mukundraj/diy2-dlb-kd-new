@@ -8,7 +8,8 @@
 
 const int max_trace_size = 2048;
 const float stepsize = 1.0; 
-const int NUM_STEPS = 200; // 50 for small data, 200 for 12GB data
+const int NUM_STEPS = 100; // 50 for small data, 200 for 12GB data
+// const float pred_step = 10.0;
 
 CSyncNekApp::CSyncNekApp()
 {
@@ -189,6 +190,51 @@ void CSyncNekApp::trace_particles_kdtree(Block& b,
     }
   }
 }
+
+void CSyncNekApp::trace_particles_kdtree_predict(Block& b, int factor)
+{
+  float pred_step = factor*stepsize;
+  const float **vars = (const float**)(b.vars.data());
+  int gst[4], gsz[4], lst[4], lsz[4];
+  b.get_ghost_load_st_sz(num_dims(), gst, gsz, lst, lsz);
+
+  BOOST_FOREACH (Particle& p, b.particles) {
+    int steps = NUM_STEPS;
+    int orig_num_steps = p.num_steps;
+    p.wgt = 1;
+    float coords[4] = {p.coords[0], p.coords[1], p.coords[2], p.coords[3]};
+
+    while (p.num_steps < max_trace_size) {
+      int rtn = trace_3D_rk1(gst, gsz, lst, lsz, vars, p.coords, pred_step);
+      if (rtn == TRACE_OUT_OF_BOUND) break; // out of ghost size
+      // add_workload();
+      if (rtn == TRACE_CRITICAL_POINT || rtn == TRACE_NO_VALUE) {
+        p.finished = true;
+        break;
+      }
+      p.num_steps += pred_step;
+      p.wgt += 1;
+      steps -= pred_step;
+      
+      if (steps <= 0) break;
+    }
+
+    p.num_steps = orig_num_steps;
+    p.finished = false;
+    p.coords[0] = coords[0]; p.coords[1] = coords[1];
+    p.coords[2] = coords[2]; p.coords[3] = coords[3];
+
+  //   if (!inside_domain(p.coords) || p.num_steps >= max_trace_size)
+  //     p.finished = true;
+
+  //   if (p.finished) {
+  //     _local_done ++;
+  //   } else {
+  //     b.particles.push_back(p);
+  //   }
+  }
+}
+
 #endif
 
 void CSyncNekApp::trace_particles_video(Block& b, 

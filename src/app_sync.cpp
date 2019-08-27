@@ -142,14 +142,14 @@ void CPTApp_Sync::exec()
   int count = 0;
   if (is_kd_tree()) {  // parallel particle tracing with constrained k-d tree decomposition
     while (true) {
-      double t0 = MPI_Wtime();
+      // double t0 = MPI_Wtime();
       //_timestamps.push_back(t0); // wait
       //_timecategories.push_back(2);
 
 #if STORE_PARTICLES
       std::vector<Particle> particles_first, particles_second;
 #endif
-
+      double kd_start = MPI_Wtime();
       int num_particles_before = 0;
       BOOST_FOREACH(int gid, gids()) {
         Block &b = block(gid);
@@ -165,6 +165,27 @@ void CPTApp_Sync::exec()
           gather_store_cores(b); // core bounds for split
 #endif
         }
+
+        if (pred_val()>0){
+          // predict workload
+          trace_particles_kdtree_predict(b, pred_val());
+        }
+
+        // load balance 
+        pt_cons_kdtree_exchange(*_master, *_assigner, _divisions, space_only() ? 3 : _num_dims, space_only(), _block_size, _ghost_size, _constrained, false, false); 
+
+    }
+
+      MPI_Barrier(comm_world());
+      double end = MPI_Wtime();
+      _timestamps.push_back(end); // kdtree
+      _timecategories.push_back(3);
+      _time_kdtree += end - kd_start;
+
+
+    double t0 = MPI_Wtime();
+    BOOST_FOREACH(int gid, gids()) {
+        Block &b = block(gid);
 
         // trace particles 
         std::map<int, std::vector<Particle> > unfinished_particles, finished_particles;
@@ -243,14 +264,14 @@ void CPTApp_Sync::exec()
       _timestamps.push_back(start); // wait
       _timecategories.push_back(2);
       // perform constrained k-d tree decomposition (dynamic particle redistribution)
-      pt_cons_kdtree_exchange(*_master, *_assigner, _divisions, space_only() ? 3 : _num_dims, space_only(), _block_size, _ghost_size, _constrained, false, false); 
+      // pt_cons_kdtree_exchange(*_master, *_assigner, _divisions, space_only() ? 3 : _num_dims, space_only(), _block_size, _ghost_size, _constrained, false, false); 
       //_master->foreach(VerifyBlockSync(*this));
 
-      MPI_Barrier(comm_world());
-      double end = MPI_Wtime();
-      _timestamps.push_back(end); // kdtree
-      _timecategories.push_back(3);
-      _time_kdtree += end - start;
+      // MPI_Barrier(comm_world());
+      // double end = MPI_Wtime();
+      // _timestamps.push_back(end); // kdtree
+      // _timecategories.push_back(3);
+      // _time_kdtree += end - start;
 #if DEBUG
       int num_particles_after = 0;
       BOOST_FOREACH(int gid, gids()) {

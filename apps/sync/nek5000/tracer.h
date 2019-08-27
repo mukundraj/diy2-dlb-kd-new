@@ -29,6 +29,8 @@ public:
       std::map<int, std::vector<Particle> >&  // finished particles
     );
 
+  void trace_particles_kdtree_predict(Block& b, int factor);
+
   void trace_particles_video(Block& b, 
       std::vector<Particle>&, 
       std::vector<Particle>&,

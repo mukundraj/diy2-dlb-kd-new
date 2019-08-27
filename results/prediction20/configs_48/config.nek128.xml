@@ -1,0 +1,18 @@
+<config epoch_size="250" ghost_size="16" num_threads="1" debug="0" 
+  num_blocks="128"
+  nb_per_proc="1"
+  elastic_ghost="1" 
+  block_mem_limit="48" 
+  kd_tree="1"
+prediction="20">
+</config>
+
+<dataset name="nek5000" file_format="NC_RECTILINEAR">
+  <run run_id="0" directory="../" pattern="nek5000.nc" />
+  <dimension name="x" storage_order="1" size="512" />
+  <dimension name="y" storage_order="2" size="512" />
+  <dimension name="z" storage_order="3" size="512" />
+  <variable name="U" data_type="FLOAT32" />
+  <variable name="V" data_type="FLOAT32" />
+  <variable name="W" data_type="FLOAT32" />
+</dataset>

@@ -29,6 +29,8 @@ public: // interface
       std::map<int, std::vector<Particle> >& // finished particles
     ) = 0;
 
+  virtual void trace_particles_kdtree_predict(Block&, int) = 0;
+
   virtual void trace_particles_video(Block&, 
       std::vector<Particle>&, 
       std::vector<Particle>&,
