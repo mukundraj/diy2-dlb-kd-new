@@ -41,6 +41,7 @@ def get_timings(fpath):
 	times = []
 	time_trace = 0
 	time_kdtree = 0
+	time_prediction = 0
 	for file in files:
 		with open(fpath+file) as fp:
 		   line = fp.readline()
@@ -62,9 +63,11 @@ def get_timings(fpath):
 		   			time_trace = float(sline[2].rstrip())
 		   		if sline[0]=='_time_kdtree=' :
 		   			time_kdtree = float(sline[2].rstrip())
+		   		if sline[0]=='_time_prediction=' :
+		   			time_prediction = float(sline[2].rstrip())
 		   			print time_kdtree
 		   		line = fp.readline()
-		   times.append(time_kdtree)
+		   times.append(time_trace+time_prediction)
 	return times
 
 
