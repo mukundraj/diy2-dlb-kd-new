@@ -24,6 +24,7 @@ from matplotlib.ticker import MaxNLocator
 
 in_folder =  sys.argv[1] + "/"
 
+
 subfolders = ['prediction0/', 'prediction5/', 'prediction10/', 'prediction20/']
 # subfolders = ['baseline/', 'constrained/']
 mems = ['48/', '96/', '384/', 'unlim/']
@@ -67,7 +68,7 @@ def get_timings(fpath):
 		   			time_prediction = float(sline[2].rstrip())
 		   			print time_kdtree
 		   		line = fp.readline()
-		   times.append(time_trace+time_prediction)
+		   times.append(time_trace)
 	return times
 
 
