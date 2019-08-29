@@ -71,7 +71,7 @@ def get_timings(fpath):
 		   		if sline[0]=='load_balance_indicat=' :
 		   			load_balance_indicat = float(sline[1].rstrip())
 		   		line = fp.readline()
-		   times.append(load_balance_indicat)
+		   times.append(time_kdtree)
 	return times
 
 
