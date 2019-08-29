@@ -14,7 +14,7 @@
 #include "common/utils.h"
 #include "cons_kdtree.h" 
 
-#define WRITE 0
+#define WRITE 1
 
 typedef diy::DiscreteBounds DBounds; 
 typedef diy::RegularGridLink RGLink;

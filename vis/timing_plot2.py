@@ -25,10 +25,10 @@ from matplotlib.ticker import MaxNLocator
 in_folder =  sys.argv[1] + "/"
 
 
-subfolders = ['prediction0/', 'prediction5/', 'prediction10/', 'prediction20/']
-# subfolders = ['prediction0/', 'prediction10/', 'prediction20/']
+# subfolders = ['prediction0/', 'prediction5/', 'prediction10/', 'prediction20/']
+subfolders = ['prediction0/', 'prediction1/']
 # subfolders = ['baseline/', 'constrained/']
-mems = ['48/', '96/', '384/', 'unlim/']
+mems = ['48/', '96/', '384/']
 
 op_image_name = "timing.png"
 
@@ -45,6 +45,7 @@ def get_timings(fpath):
 	time_kdtree = 0
 	time_prediction = 0
 	load_balance_indicat = 0
+	maxbyavg = 0
 	for file in files:
 		with open(fpath+file) as fp:
 		   line = fp.readline()
@@ -70,8 +71,10 @@ def get_timings(fpath):
 		   			time_prediction = float(sline[2].rstrip())
 		   		if sline[0]=='load_balance_indicat=' :
 		   			load_balance_indicat = float(sline[1].rstrip())
+		   		if sline[0]=='max/avg_integr_steps=' :
+		   			maxbyavg = float(sline[1].rstrip())
 		   		line = fp.readline()
-		   times.append(time_kdtree)
+		   times.append(time_trace)
 	return times
 
 
@@ -99,6 +102,8 @@ for sf in subfolders:
 
 		if sf=='prediction0/':
 			styl = '-'
+		if sf=='prediction1/':
+			styl = ':'
 		elif sf=='prediction5/':
 			styl = '--'
 		elif sf=='prediction10/':
