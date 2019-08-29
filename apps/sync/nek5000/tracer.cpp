@@ -28,9 +28,9 @@ void CSyncNekApp::initialize_particles(Block& b,
 {
 #if 1 // for k-d tree paper
     // {64, 128, 128} -> {256, 256, 256}
-  const int stride[3] = {128, 128, 128};
   // const int stride[3] = {512, 512, 512};
-  //const int stride[3] = {8, 8, 8};
+  // const int stride[3] = {128, 128, 128};
+  const int stride[3] = {16, 16, 16};
   const float gap[3] = {1.f/(stride[0]-1) * (float)(domain_size()[0]-1),
                         1.f/(stride[1]-1) * (float)(domain_size()[1]-1),
                         1.f/(stride[2]-1) * (float)(domain_size()[2]-1)};
@@ -232,6 +232,7 @@ void CSyncNekApp::trace_particles_kdtree_predict(Block& b, int factor)
   //   } else {
   //     b.particles.push_back(p);
   //   }
+    // fprintf(stderr, "%d ", p.wgt );
   }
 }
 

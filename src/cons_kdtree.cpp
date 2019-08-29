@@ -57,6 +57,8 @@ void populate_cons_kdtree_block(Block* blk, const diy::Master::ProxyWithLink& cp
     b->points[i].num_steps = blk->particles[i].num_steps;
     b->points[i].num_rounds = blk->particles[i].num_rounds;
     b->points[i].finished = blk->particles[i].finished;
+    b->points[i].wgt = blk->particles[i].wgt;
+    // fprintf(stderr, "%d ", b->points[i].wgt); // mraj
   }
 
   //b->points.insert(b->points.end(), blk->particles.begin(), blk->particles.end());
@@ -96,7 +98,10 @@ void extract_cons_kdtree_block(ConstrainedKDTreeBlock* b, const diy::Master::Pro
     p.num_steps = b->points[i].num_steps;
     p.num_rounds = b->points[i].num_rounds;
     p.finished = b->points[i].finished; //  = false
+    p.wgt = b->points[i].wgt;
     blk->particles.push_back(p);
+
+    // fprintf(stderr, "%d ", p.wgt); // mraj
   }
 
   diy::RegularContinuousLink* kdtree_link = static_cast<diy::RegularContinuousLink*>(cp.link());

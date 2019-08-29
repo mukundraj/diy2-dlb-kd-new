@@ -385,9 +385,9 @@ compute_local_histogram(Block* b, const diy::ReduceProxy& srp, int dim) const
         }
         if (loc >= (int) bins_)
             loc = bins_ - 1;
-        // ++(histogram[loc]);
-        int wgt = (b->*points_)[i].wgt; // mraj
-        (histogram[loc])+=wgt;
+        ++(histogram[loc]);
+        // int wgt = (b->*points_)[i].wgt; // mraj
+        // (histogram[loc])+=wgt;
     }
 
     srp.enqueue(srp.out_link().target(0), histogram);

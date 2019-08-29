@@ -26,6 +26,7 @@ in_folder =  sys.argv[1] + "/"
 
 
 subfolders = ['prediction0/', 'prediction5/', 'prediction10/', 'prediction20/']
+# subfolders = ['prediction0/', 'prediction10/', 'prediction20/']
 # subfolders = ['baseline/', 'constrained/']
 mems = ['48/', '96/', '384/', 'unlim/']
 
@@ -43,6 +44,7 @@ def get_timings(fpath):
 	time_trace = 0
 	time_kdtree = 0
 	time_prediction = 0
+	load_balance_indicat = 0
 	for file in files:
 		with open(fpath+file) as fp:
 		   line = fp.readline()
@@ -66,9 +68,10 @@ def get_timings(fpath):
 		   			time_kdtree = float(sline[2].rstrip())
 		   		if sline[0]=='_time_prediction=' :
 		   			time_prediction = float(sline[2].rstrip())
-		   			print time_kdtree
+		   		if sline[0]=='load_balance_indicat=' :
+		   			load_balance_indicat = float(sline[1].rstrip())
 		   		line = fp.readline()
-		   times.append(time_trace)
+		   times.append(load_balance_indicat)
 	return times
 
 
