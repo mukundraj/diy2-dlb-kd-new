@@ -462,8 +462,12 @@ void CPTApp::write_output_file()
 {
   //fprintf(stderr, "rank %d: %d intervals\n", comm_world_rank(), (int)_timecategories.size());
   std::stringstream stream;  
-  stream << std::to_string(_appconf.block_mem_limit())<<"/gantt_"<<std::to_string(comm_world_size())<<"_"<< comm_world_rank() << ".csv"; 
 
+  if (_appconf.block_mem_limit()>-1){
+  stream << std::to_string(_appconf.block_mem_limit())<<"/gantt_"<<std::to_string(comm_world_size())<<"_"<< comm_world_rank() << ".csv"; 
+  }else{
+    stream << "unlim/gantt_"<<std::to_string(comm_world_size())<<"_"<< comm_world_rank() << ".csv";
+  }
   std::ofstream ofile;  
   ofile.open(stream.str().c_str());
  
@@ -484,7 +488,11 @@ void CPTApp::write_output_file()
   if (comm_world_rank() == 0) {
     std::ofstream ofile2;  
     stream.str("");
+    if (_appconf.block_mem_limit()>-1){
     stream << std::to_string(_appconf.block_mem_limit())<<"/balance_"<<std::to_string(comm_world_size())<<".csv";
+    }else{
+      stream << "unlim/balance_"<<std::to_string(comm_world_size())<<".csv";
+    }
     ofile2.open(stream.str().c_str());
  
     float prev = _timestamps[0]; int n = 0;
