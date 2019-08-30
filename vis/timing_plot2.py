@@ -3,12 +3,12 @@ This version plots the timing plot for bebop output files
 
 Started: 21 Aug 2019
 Updated: 27 Aug 2019 : read input folder from command line
-
+Updated: 29 Aug 2019 : Reads field name from command line. Makes a copy of image and script at the destination.
+Updated: 30 Aug 2019 : Handles output folders with WRITE enabled
 
 usage:
-python timing_plot2.py /Users/mukundraj/Desktop/work/projects/diy2-dlb-kd-new-copy/archive/bebop_190823/nogantt
 
-python timing_plot2.py /Users/mukundraj/Desktop/work/results/diy2-dlb-kd-new/bebop_190827/nogantt
+python timing_plot2.py /Users/mukundraj/Desktop/work/results/diy2-dlb-kd-new/bebop_190829/nogantt time_trace
 
 '''
 
@@ -18,19 +18,24 @@ import matplotlib.pyplot as plt
 import shutil
 import sys
 from matplotlib.ticker import MaxNLocator
+import ntpath
+from shutil import copyfile
 
 # in_folder = "/Users/mukundraj/Desktop/work/projects/diy2-dlb-kd-new/archive/bebop_190822/nogantt/"
 # in_folder = "/Users/mukundraj/Desktop/work/projects/diy2-dlb-kd-new-copy/archive/bebop_190823/nogantt/"
 
 in_folder =  sys.argv[1] + "/"
+field = sys.argv[2]
+op_image_name = field
+
 
 
 # subfolders = ['prediction0/', 'prediction5/', 'prediction10/', 'prediction20/']
 subfolders = ['prediction0/', 'prediction1/']
 # subfolders = ['baseline/', 'constrained/']
-mems = ['48/', '96/', '384/']
+mems = ['48/', '96/', '384/', 'unlim/']
 
-op_image_name = "timing.png"
+
 
 def kfunc(val):
 	return int(val.split('_')[1])
@@ -38,7 +43,7 @@ def kfunc(val):
 def get_timings(fpath):
 
 	files = os.listdir(fpath)
-	files = [file for file in files if file != ".DS_Store"]
+	files = [file for file in files if file != ".DS_Store" and os.path.splitext(file)[1] != '.csv']
 	files.sort(key=kfunc)
 	times = []
 	time_trace = 0
@@ -52,7 +57,7 @@ def get_timings(fpath):
 		   while line:
 		   		
 		   		sline = line.split('\t')
-		   		print sline
+		   		# print sline
 		   		if sline[0]=='time_init=' :
 		   			time_init = float(sline[2].rstrip())
 		   		if sline[0]=='time_purerun=' :
@@ -74,13 +79,13 @@ def get_timings(fpath):
 		   		if sline[0]=='max/avg_integr_steps=' :
 		   			maxbyavg = float(sline[1].rstrip())
 		   		line = fp.readline()
-		   times.append(time_trace)
+		   times.append(eval(field))
 	return times
 
 
 
 plt.title(op_image_name)
-plt.ylabel('time (s)')
+plt.ylabel(op_image_name)
 plt.xlabel('nprocs')
 
 
@@ -99,6 +104,8 @@ for sf in subfolders:
 			xs = [2, 4, 8, 16, 32, 64, 128, 256, 512]
 		elif len(tim) == 5:
 			xs = [32, 64, 128, 256, 512]
+		elif len(tim) == 4:
+			xs = [64, 128, 256, 512]
 
 		if sf=='prediction0/':
 			styl = '-'
@@ -135,7 +142,16 @@ plt.legend(loc='best', fontsize=12)
 plt.gca().minorticks_off()
 plt.gca().set_xticks(xs)
 plt.gca().set_xticklabels(xs)
+
+plt.savefig(in_folder + op_image_name + ".png")
+
+cur_fname = os.path.abspath(__file__)
+scrpt_fname = in_folder+field+".py"
+if cur_fname != scrpt_fname:
+	copyfile(os.path.abspath(__file__), scrpt_fname)
+
 plt.show()
-plt.savefig(in_folder + op_image_name)
+
+
 
 
