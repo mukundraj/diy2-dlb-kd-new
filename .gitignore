@@ -6,4 +6,7 @@ archive
 .DS_Store
 /CMakeLists.txt
 nek5000.nc
+nek5000_full.nc
 build
+results/prediction1/48
+results/prediction1/96

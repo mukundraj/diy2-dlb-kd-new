@@ -115,10 +115,10 @@ for sf in subfolders:
 			styl = '--'
 		elif sf=='prediction10/':
 			styl = '-.'
-		elif sf=='prediction20/':
-			styl = ':'
-		else:
-			styl = "-"
+		# elif sf=='prediction20/':
+		# 	styl = ':'
+		# else:
+		# 	styl = "-"
 
 		if mem == '48/':
 			col = 'red'

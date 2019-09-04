@@ -30,7 +30,7 @@ void CSyncNekApp::initialize_particles(Block& b,
     // {64, 128, 128} -> {256, 256, 256}
   // const int stride[3] = {512, 512, 512};
   const int stride[3] = {128, 128, 128};
-  // const int stride[3] = {16, 16, 16};
+  // const int stride[3] = {4, 4, 4};
   const float gap[3] = {1.f/(stride[0]-1) * (float)(domain_size()[0]-1),
                         1.f/(stride[1]-1) * (float)(domain_size()[1]-1),
                         1.f/(stride[2]-1) * (float)(domain_size()[2]-1)};
@@ -179,6 +179,9 @@ void CSyncNekApp::trace_particles_kdtree(Block& b,
       
       if (steps <= 0) break;
     }
+    // fprintf(stderr, "%d ", p.wgt);
+    _pred_mismatch += abs((NUM_STEPS-steps) - p.wgt)-1;
+
 
     if (!inside_domain(p.coords) || p.num_steps >= max_trace_size)
       p.finished = true;
@@ -209,18 +212,18 @@ void CSyncNekApp::trace_particles_kdtree_predict(Block& b, int factor)
       if (rtn == TRACE_OUT_OF_BOUND) break; // out of ghost size
       // add_workload();
       if (rtn == TRACE_CRITICAL_POINT || rtn == TRACE_NO_VALUE) {
-        p.finished = true;
+        // p.finished = true;
         break;
       }
       p.num_steps += pred_step;
-      p.wgt += 1;
+      p.wgt += pred_step;
       steps -= pred_step;
       
       if (steps <= 0) break;
     }
 
     p.num_steps = orig_num_steps;
-    p.finished = false;
+    // p.finished = false;
     p.coords[0] = coords[0]; p.coords[1] = coords[1];
     p.coords[2] = coords[2]; p.coords[3] = coords[3];
 

@@ -125,7 +125,9 @@ CPTApp_Sync::CPTApp_Sync() :
   _total_steps(0),
   _round_steps(0),
   _max_workload(0),
-  _num_particles(0)
+  _num_particles(0),
+  _pred_mismatch(0),
+  _total_pred_mismatch(0)
 {
 }
 
@@ -402,6 +404,12 @@ void CPTApp_Sync::stat()
     1, MPI_DOUBLE, MPI_SUM, 0, comm_world()
   );
 
+  MPI_Reduce(
+    &_pred_mismatch,
+    &_total_pred_mismatch,
+    1, MPI_INT, MPI_SUM, 0, comm_world()
+  );
+
   if (_num_particles == 0) {
     BOOST_FOREACH(int gid, gids()) {
       Block &b = block(gid);
@@ -468,6 +476,7 @@ void CPTApp_Sync::stat()
     fprintf(stderr, "_time_trace=\t\t%.3f\n", _time_trace);
     fprintf(stderr, "_time_kdtree=\t\t%.3f\n", _time_kdtree);
     fprintf(stderr, "_time_prediction=\t\t%.3f\n", _time_prediction);
+    fprintf(stderr, "_total_pred_mismatch=\t\t%d\n", _total_pred_mismatch);
     fprintf(stderr, "--------------------------------------\n"); 
   }
 } 
