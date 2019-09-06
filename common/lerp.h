@@ -6,6 +6,7 @@
 
 bool inside_st_sz(int num_dims, const int *st, const int *sz, const float *p);
 bool inside_lb_ub(int num_dims, const int *lb, const int *ub, const int *p);
+bool inside_clb_cub(int num_dims, const float *clb, const float *cub, const float *p);
 
 float texel2D(const float *ptr, const int *sz, int x, int y);
 float texel3D(const float *ptr, const int *sz, int x, int y, int z);
@@ -15,6 +16,10 @@ bool lerp2D(const float *pt, const int *gst,
     const int *gsz, const int *st, const int *sz, int num_vars, const float **ptrs, float *vars);
 bool lerp3D(const float *pt, const int *gst,
     const int *gsz, const int *st, const int *sz, int num_vars, const float **ptrs, float *vars);
+
+bool lerp3D_core(const float* pt, const float *clb,
+    const float *cub, const int* st, const int* sz, int num_vars, const float **ptrs, float *vars);
+
 bool lerp4D(const float *pt, const int *gst,
     const int *gsz, const int *st, const int *sz, int num_vars, const float **ptrs, float *vars);
 

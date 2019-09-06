@@ -21,6 +21,15 @@ bool inside_lb_ub(int num_dims, const int *lb, const int *ub, const int *p)
   return true;
 }
 
+bool inside_clb_cub(int num_dims, const float *clb, const float *cub, const float *p)
+{
+  for (int i = 0; i < num_dims; i ++) 
+    if (p[i]<clb[i] || p[i]>=cub[i])
+      return false;
+  return true;
+}
+
+
 float texel2D(const float* p, const int* sz, int x, int y)
 {
   return p[x + sz[0]*y];
@@ -72,6 +81,49 @@ bool lerp3D(const float* pt, const int *gst,
     const int *gsz, const int* st, const int* sz, int num_vars, const float **ptrs, float *vars)
 {
   if (!inside_st_sz(3, gst, gsz, pt)) return false;
+
+  float p[8];
+  float x=pt[0] - st[0],
+        y=pt[1] - st[1],
+        z=pt[2] - st[2];
+  int i = floor(x),
+      j = floor(y),
+      k = floor(z);
+  int i1=i+1, j1=j+1, k1=k+1;
+  float x0 = i, x1 = i1,
+        y0 = j, y1 = j1,
+        z0 = k, z1 = k1;
+  int v;
+
+  for (v=0; v<num_vars; v++) {
+    p[0] = texel3D(ptrs[v], sz, i  , j  , k  );
+    p[1] = texel3D(ptrs[v], sz, i1 , j  , k  );
+    p[2] = texel3D(ptrs[v], sz, i  , j1 , k  );
+    p[3] = texel3D(ptrs[v], sz, i1 , j1 , k  );
+    p[4] = texel3D(ptrs[v], sz, i  , j  , k1 );
+    p[5] = texel3D(ptrs[v], sz, i1 , j  , k1 );
+    p[6] = texel3D(ptrs[v], sz, i  , j1 , k1 );
+    p[7] = texel3D(ptrs[v], sz, i1 , j1 , k1 );
+
+    vars[v] =
+        p[0]*(x1-x)*(y1-y)*(z1-z)
+      + p[1]*(x-x0)*(y1-y)*(z1-z)
+      + p[2]*(x1-x)*(y-y0)*(z1-z)
+      + p[3]*(x-x0)*(y-y0)*(z1-z)
+      + p[4]*(x1-x)*(y1-y)*(z-z0)
+      + p[5]*(x-x0)*(y1-y)*(z-z0)
+      + p[6]*(x1-x)*(y-y0)*(z-z0)
+      + p[7]*(x-x0)*(y-y0)*(z-z0);
+  }
+
+  return true;
+}
+
+
+bool lerp3D_core(const float* pt, const float *clb,
+    const float *cub, const int* st, const int* sz, int num_vars, const float **ptrs, float *vars)
+{
+  if (!inside_clb_cub(3, clb, cub, pt)) return false;
 
   float p[8];
   float x=pt[0] - st[0],

@@ -6,9 +6,10 @@
 #include "common/advect.h"
 #include "common/lerp.h"
 
-const int max_trace_size = 2048;
+const int max_trace_size = 256;//2048;
 const float stepsize = 1.0; 
-const int NUM_STEPS = 100; // 50 for small data, 200 for 12GB data
+const int EPOCH_STEPS = 128;
+const int NUM_STEPS = 32; // 50 for small data, 200 for 12GB data
 // const float pred_step = 10.0;
 
 CSyncNekApp::CSyncNekApp()
@@ -109,25 +110,26 @@ void CSyncNekApp::trace_particles(Block& b,
   }
 }
 
-#if 0
-void CSyncNekApp::trace_particles_kdtree(Block& b, 
+void CSyncNekApp::trace_particles_core(Block& b, 
     std::vector<Particle>& particles, 
-    std::map<int, std::vector<Particle> >& unfinished_particles_tbr, 
-    std::map<int, std::vector<Particle> >& finished_particles)
+    std::map<int, std::vector<Particle> >& unfinished_particles, 
+    std::map<int, std::vector<Particle> >& finished_particles) 
 {
   const float **vars = (const float**)(b.vars.data());
-  //int gst[4], gsz[4];
-  //b.get_ghost_st_sz(num_dims(), gst, gsz);
   int gst[4], gsz[4], lst[4], lsz[4];
+  float clb[4], cub[4]; // core_start and core_size
   b.get_ghost_load_st_sz(num_dims(), gst, gsz, lst, lsz);
+  b.get_core_st_sz(num_dims(), clb, cub);
 
-  std::vector<Particle> unfinished_particles;
-  BOOST_FOREACH (Particle& p, b.particles) {
+  // fprintf(stderr, "(%f %f) (%f %f) (%f %f) \n", clb[0], cub[0],  clb[1], cub[1],  clb[2], cub[2]);
+
+  
+
+  BOOST_FOREACH (Particle& p, particles) {
     int steps = NUM_STEPS;
     while (p.num_steps < max_trace_size) {
-      //int rtn = trace_3D_rk1(gst, gsz, vars, p.coords, stepsize);
-      int rtn = trace_3D_rk1(gst, gsz, lst, lsz, vars, p.coords, stepsize);
-      if (rtn == TRACE_OUT_OF_BOUND) break; // out of ghost size
+      int rtn = trace_3D_rk1_core(clb, cub, lst, lsz, vars, p.coords, stepsize);
+      if (rtn == TRACE_OUT_OF_BOUND) break; // out of core size
       add_workload();
       if (rtn == TRACE_CRITICAL_POINT || rtn == TRACE_NO_VALUE) {
         p.finished = true;
@@ -138,22 +140,28 @@ void CSyncNekApp::trace_particles_kdtree(Block& b,
       
       if (steps <= 0) break;
     }
-//fprintf(stderr, "p.num_steps = %d\n", p.num_steps);
+
     if (!inside_domain(p.coords) || p.num_steps >= max_trace_size)
       p.finished = true;
 
     if (p.finished) {
-      //finished_particles[p.home_gid].push_back(p); // TODO
-      b.num_particles_finished ++;
+      finished_particles[p.home_gid].push_back(p);
+      _local_done ++;
+      _local_done_epoch++;
     } else {
-      unfinished_particles.push_back(p);
+
+      if (p.num_steps % EPOCH_STEPS==0){ 
+      // if epoch is done, then kd-tree rebalance, else continue with same partition
+        _local_done_epoch++;
+      } 
+      const int dst_gid = bound_gid(pt2gid(p.coords)); // TODO
+      unfinished_particles[dst_gid].push_back(p);
     }
   }
-
-  //b.num_particles = unfinished_particles.size();
-  b.particles.clear();
-  b.particles.insert(b.particles.end(), unfinished_particles.begin(), unfinished_particles.end());
 }
+
+#if 0
+
 #else
 void CSyncNekApp::trace_particles_kdtree(Block& b, 
     std::vector<Particle>& particles, 
@@ -186,9 +194,17 @@ void CSyncNekApp::trace_particles_kdtree(Block& b,
     if (!inside_domain(p.coords) || p.num_steps >= max_trace_size)
       p.finished = true;
 
+   
+
     if (p.finished) {
+      _local_done_epoch++;
       _local_done ++;
     } else {
+
+      if (p.num_steps % EPOCH_STEPS==0){ 
+      // if epoch is done, then kd-tree rebalance, else continue with same partition
+        _local_done_epoch++;
+      } 
       b.particles.push_back(p);
     }
   }

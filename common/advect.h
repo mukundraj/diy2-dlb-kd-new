@@ -35,6 +35,16 @@ int trace_3D_rk1(
     float h
   );
 
+int trace_3D_rk1_core(
+    const float *clb,
+    const float *cub,
+    const int *lst,
+    const int *lsz,
+    const float **vec,
+    float *X,
+    float h
+  );
+
 int trace_4D_rk1(
     const int *gst,
     const int *gsz,

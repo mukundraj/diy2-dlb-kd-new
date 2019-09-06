@@ -23,6 +23,11 @@ public:
       std::map<int, std::vector<Particle> >&  // finished particles
     );
 
+  void trace_particles_core(Block& b, 
+    std::vector<Particle>& particles, 
+    std::map<int, std::vector<Particle> >& unfinished_particles, 
+    std::map<int, std::vector<Particle> >& finished_particles);
+
   void trace_particles_kdtree(Block&,
       std::vector<Particle>&, // particles to trace
       std::map<int, std::vector<Particle> >&, // unfinished particles

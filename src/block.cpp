@@ -235,6 +235,14 @@ void Block::get_ghost_load_st_sz(int ndims, int *gst, int *gsz, int *lst, int *l
   }
 }
 
+void Block::get_core_st_sz(int ndims, float *clb, float *cub)
+{
+  for (int i=0; i<ndims; i++) {
+    clb[i] = core_bounds.min[i]; 
+    cub[i] = core_bounds.max[i];
+  }
+}
+
 /*
 int Block::neighbor_dir(int gid) const 
 {

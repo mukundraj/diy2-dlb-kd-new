@@ -106,6 +106,33 @@ int trace_3D_rk1(
   return TRACE_SUCC;
 }
 
+int trace_3D_rk1_core(
+    const float *clb,
+    const float *cub,
+    const int *lst,
+    const int *lsz,
+    const float **vec,
+    float *X,
+    float h
+  )
+{
+  // if (!inside_st_sz(3, gst, gsz, X)) return TRACE_OUT_OF_BOUND;
+  if (!inside_clb_cub(3, clb, cub, X)) return TRACE_OUT_OF_BOUND;
+
+  float v[3];
+  //if (!lerp3D(X, gst, gsz, 3, vec, v))
+  if (!lerp3D_core(X, clb, cub, lst, lsz, 3, vec, v))
+    return TRACE_OUT_OF_BOUND;
+
+  if (v[0]*v[0] + v[1]*v[1] + v[2]*v[2] == 0)
+    return TRACE_CRITICAL_POINT;
+
+  for (int i = 0; i < 3; i++)
+    X[i] += 0.5 * h * v[i];
+
+  return TRACE_SUCC;
+}
+
 int trace_4D_rk1(
     const int *gst,
     const int *gsz,

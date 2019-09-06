@@ -37,6 +37,7 @@ public:
   void get_load_st_sz(int ndims, int *lst, int *lsz);
   void get_ghost_load_st_sz(int ndims, int *gst, int *gsz, int *lst, int *lsz);
   //int neighbor_dir(int gid) const; // returns -1 if not neighbor
+  void get_core_st_sz(int ndims, float *clb, float *cub);
 
 public: // ``foreach'' funcs 
   void bil_add_block_2D(const PBDataset& d);

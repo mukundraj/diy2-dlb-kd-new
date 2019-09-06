@@ -83,6 +83,78 @@ struct TraceBlockSync { // functor for regular particle tracing
   CPTApp_Sync& app;
 };
 
+struct TraceBlockRound { // functor for doing a round of particle tracing in epoch pred load bal
+  TraceBlockRound(CPTApp_Sync& app_) :
+    app(app_) {}
+
+  void operator()(void *b_, const diy::Master::ProxyWithLink &cp, void*) const {
+
+    Block &b = *static_cast<Block*>(b_);
+    const int rank = cp.master()->communicator().rank(), gid = cp.gid(); 
+    std::map<int, std::vector<Particle> > unfinished_particles, finished_particles;
+    std::vector<Particle> incoming_particles;
+
+   
+    // dequeue vectors of endpoints, add to seed particles
+    std::vector<int> in;
+    cp.incoming(in);
+    for (int i = 0; i < in.size(); i ++) {
+      if (cp.incoming(in[i]).buffer.size() > 0) {
+        std::vector<Particle> ps;
+        cp.dequeue(in[i], ps);
+        incoming_particles.insert(incoming_particles.end(), ps.begin(), ps.end());
+      }
+    }
+
+    // add unfinished particles in the previous round
+    for (int i = 0; i < b.particles.size(); i ++)
+      incoming_particles.push_back(b.particles[i]);
+    b.particles.clear();
+
+    // trace particles
+    if (incoming_particles.size() > 0) {
+      app.trace_particles_core(b, incoming_particles, unfinished_particles, finished_particles);
+      incoming_particles.clear();
+    
+      for (std::map<int, std::vector<Particle> >::iterator it = finished_particles.begin(); it != finished_particles.end(); it ++) {
+        b.num_particles_finished += it->second.size();
+      }
+    }
+
+    // enqueue the vectors of endpoints
+    for (std::map<int, std::vector<Particle> >::iterator it = unfinished_particles.begin(); it != unfinished_particles.end(); it ++) {
+      diy::BlockID bid; 
+      bid.gid = it->first; 
+      bid.proc = app.rank(bid.gid);
+
+      if (bid.gid == b.gid) { 
+        b.particles.insert(b.particles.end(), (it->second).begin(), (it->second).end());
+      }
+      else {
+        bool flag = false;
+        for (int i=0; i<cp.link()->size(); i++) {
+          if (bid.gid == cp.link()->target(i).gid) {
+            flag = true;
+            break;
+          }
+        }
+        if (!flag) {
+          fprintf(stderr, "ERROR: bid is not in cp.link neighbors\n");
+          assert (false);
+        }
+        cp.enqueue(bid, it->second);
+      }
+    }
+
+    // stage all_reduce of total initialized and total finished particle traces
+    cp.all_reduce((int)b.num_particles_initialized, std::plus<int>());
+    cp.all_reduce((int)b.num_particles_finished, std::plus<int>());
+  }
+
+  CPTApp_Sync& app;
+};
+
+
 struct VerifyBlockSync {
   VerifyBlockSync(CPTApp_Sync& app_) :
     app(app_) {}
@@ -113,6 +185,8 @@ struct VerifyBlockSync {
 
   CPTApp_Sync& app;
 };
+
+
 
 CPTApp_Sync::CPTApp_Sync() : 
   CPTApp(),
@@ -170,66 +244,97 @@ void CPTApp_Sync::exec()
 
       }
 
-
-    MPI_Barrier(comm_world());
-    double _time_pred_start = MPI_Wtime();   
-     
-    BOOST_FOREACH(int gid, gids()) {
-        Block &b = block(gid);
-
-        if (pred_val()>0){
-          // predict workload
-          trace_particles_kdtree_predict(b, pred_val());
-        }
-
-      }
+      // prediction and generate ghost particles (not for baseline case)
 
 
-      MPI_Barrier(comm_world());
-      double kd_start = MPI_Wtime();
-      _time_prediction += kd_start - _time_pred_start;
-      int num_particles_before = 0;
+      // compute kd-tree based on prediction
+      pt_cons_kdtree_exchange(*_master, *_assigner, _divisions, space_only() ? 3 : _num_dims, space_only(), _block_size, _ghost_size, _constrained, false, false);
 
+
+
+
+      // redistribute particles based based on kd-tree boundaries (not for baseline case)
+      _local_init_epoch = 0;
        BOOST_FOREACH(int gid, gids()) {
         Block &b = block(gid);
+        _local_init_epoch += b.particles.size();
+      }
+      _local_done_epoch = 0;
+      while(true){ // epoch loop: each iteration is a round
+          int init_epoch = 0, done_epoch = 0;
 
-        // load balance 
-        pt_cons_kdtree_exchange(*_master, *_assigner, _divisions, space_only() ? 3 : _num_dims, space_only(), _block_size, _ghost_size, _constrained, false, false); 
+
+          _master->foreach(TraceBlockRound(*this));
+
+
+          // check if epoch is done
+          MPI_Allreduce(&_local_init_epoch, &init_epoch, 1, MPI_INT, MPI_SUM, comm_world());
+          MPI_Allreduce(&_local_done_epoch, &done_epoch, 1, MPI_INT, MPI_SUM, comm_world());
+
+          if (init_epoch == done_epoch) break; break;
 
       }
 
-      MPI_Barrier(comm_world());
-      double end = MPI_Wtime();
-      _timestamps.push_back(end); // kdtree
-      _timecategories.push_back(3);
-      _time_kdtree += end - kd_start;
+
+//     MPI_Barrier(comm_world());
+//     double _time_pred_start = MPI_Wtime();   
+     
+//     BOOST_FOREACH(int gid, gids()) {
+//         Block &b = block(gid);
+
+//         if (pred_val()>0){
+//           // predict workload
+//           trace_particles_kdtree_predict(b, pred_val());
+//         }
+
+//       }
 
 
-    double t0 = MPI_Wtime();
-    BOOST_FOREACH(int gid, gids()) {
-        Block &b = block(gid);
+//       MPI_Barrier(comm_world());
+//       double kd_start = MPI_Wtime();
+//       _time_prediction += kd_start - _time_pred_start;
+//       int num_particles_before = 0;
 
-        // trace particles 
-        std::map<int, std::vector<Particle> > unfinished_particles, finished_particles;
-        std::vector<Particle> working_particles;
-        working_particles.insert(working_particles.end(), b.particles.begin(), b.particles.end());
-        b.particles.clear();
-        if (working_particles.size() > 0) {
-#if STORE_PARTICLES
-          trace_particles_video(b, working_particles, particles_first, particles_second);
-#else
-          trace_particles_kdtree(b, working_particles, unfinished_particles, finished_particles);
-#endif
-        }
+//        BOOST_FOREACH(int gid, gids()) {
+//         Block &b = block(gid);
 
-        num_particles_before += (int)b.particles.size();
-      }
+//         // load balance 
+//         pt_cons_kdtree_exchange(*_master, *_assigner, _divisions, space_only() ? 3 : _num_dims, space_only(), _block_size, _ghost_size, _constrained, false, false); 
 
-      double t1 = MPI_Wtime();
-      _timestamps.push_back(t1); // trace
-      _timecategories.push_back(1);
+//       }
 
-      _time_trace += t1 - t0;
+//       MPI_Barrier(comm_world());
+//       double end = MPI_Wtime();
+//       _timestamps.push_back(end); // kdtree
+//       _timecategories.push_back(3);
+//       _time_kdtree += end - kd_start;
+
+
+//     double t0 = MPI_Wtime();
+//     BOOST_FOREACH(int gid, gids()) {
+//         Block &b = block(gid);
+
+//         // trace particles 
+//         std::map<int, std::vector<Particle> > unfinished_particles, finished_particles;
+//         std::vector<Particle> working_particles;
+//         working_particles.insert(working_particles.end(), b.particles.begin(), b.particles.end());
+//         b.particles.clear();
+//         if (working_particles.size() > 0) {
+// #if STORE_PARTICLES
+//           trace_particles_video(b, working_particles, particles_first, particles_second);
+// #else
+//           trace_particles_kdtree(b, working_particles, unfinished_particles, finished_particles);
+// #endif
+//         }
+
+//         num_particles_before += (int)b.particles.size();
+//       }
+
+//       double t1 = MPI_Wtime();
+//       _timestamps.push_back(t1); // trace
+//       _timecategories.push_back(1);
+
+//       _time_trace += t1 - t0;
 
       // check if finished particle tracing
       int init, done; 
@@ -268,7 +373,7 @@ void CPTApp_Sync::exec()
       }
 #endif
 
-      if (init == done && done != 0) break;
+      if (init == done && done != 0) break; break;
 #if DEBUG
       std::vector<int> point_num1(comm_world_size());
       MPI_Allgather(&num_particles_before, 1, MPI_INT, point_num1.data(), 1, MPI_INT, comm_world());
