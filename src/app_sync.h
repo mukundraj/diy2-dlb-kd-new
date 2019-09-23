@@ -17,7 +17,7 @@ public: // interface
   virtual void initialize_particles(Block&,
       std::vector<Particle>&
     ) = 0;
-  
+
   virtual void trace_particles_core(Block&, 
       std::vector<Particle>&, // particles to trace
       std::map<int, std::vector<Particle> >&, // unfinished particles

@@ -38,10 +38,12 @@ struct Particle {
   bool finished;
   int wgt;
   bool real;
+  int num_esteps; // number of epoch steps
 
   Particle() {
     id = 0;
     num_steps = 0;
+    num_esteps = 0;
     num_rounds = 0;
     memset(coords, sizeof(float)*4, 0);
     finished = false;
@@ -52,6 +54,35 @@ struct Particle {
   const float& operator [](int i) const {return coords[i];}
   float& operator [](int i) {return coords[i];}
 };
+
+// namespace diy {
+//   template <> struct Serialization<Particle> {
+//     static void save(BinaryBuffer& bb, const Particle& m) {
+//       diy::save(bb, m.id);
+//       diy::save(bb, m.home_gid);
+//       diy::save(bb, m.num_steps);
+//       diy::save(bb, m.num_rounds);
+//       diy::save(bb, m.coords, 4);
+//       diy::save(bb, m.finished);
+//       diy::save(bb, m.wgt);
+//       diy::save(bb, m.real);
+//       diy::save(bb, m.num_esteps);
+//     }
+    
+//     static void load(BinaryBuffer& bb, Particle& m) {
+//       diy::load(bb, m.id);
+//       diy::load(bb, m.home_gid);
+//       diy::load(bb, m.num_steps);
+//       diy::load(bb, m.num_rounds);
+//       diy::load(bb, m.coords, 4);
+//       diy::load(bb, m.finished);
+//       diy::load(bb, m.wgt);
+//       diy::load(bb, m.real);
+//       diy::load(bb, m.num_esteps);
+//     }
+//   };
+// }
+
 
 struct Message {
   enum {

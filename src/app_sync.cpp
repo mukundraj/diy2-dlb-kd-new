@@ -83,6 +83,8 @@ struct TraceBlockSync { // functor for regular particle tracing
   CPTApp_Sync& app;
 };
 
+size_t _local_unfinished_particles, _local_num_particles;
+
 struct TraceBlockRound { // functor for doing a round of particle tracing in epoch pred load bal
   TraceBlockRound(CPTApp_Sync& app_) :
     app(app_) {}
@@ -94,6 +96,7 @@ struct TraceBlockRound { // functor for doing a round of particle tracing in epo
     std::map<int, std::vector<Particle> > unfinished_particles, finished_particles;
     std::vector<Particle> incoming_particles;
 
+
    
     // dequeue vectors of endpoints, add to seed particles
     std::vector<int> in;
@@ -103,13 +106,22 @@ struct TraceBlockRound { // functor for doing a round of particle tracing in epo
         std::vector<Particle> ps;
         cp.dequeue(in[i], ps);
         incoming_particles.insert(incoming_particles.end(), ps.begin(), ps.end());
+        for (size_t ii=0; ii<ps.size(); ii++){
+          fprintf (stderr, "[%d (%d)] ", b.gid, ps[ii].id);
+        }
+        fprintf (stderr, "\n ");
       }
+
     }
+
+    _local_num_particles = incoming_particles.size();
 
     // add unfinished particles in the previous round
     for (int i = 0; i < b.particles.size(); i ++)
       incoming_particles.push_back(b.particles[i]);
     b.particles.clear();
+
+    
 
     // trace particles
     if (incoming_particles.size() > 0) {
@@ -121,11 +133,15 @@ struct TraceBlockRound { // functor for doing a round of particle tracing in epo
       }
     }
 
+
+    _local_unfinished_particles = 0;
     // enqueue the vectors of endpoints
     for (std::map<int, std::vector<Particle> >::iterator it = unfinished_particles.begin(); it != unfinished_particles.end(); it ++) {
       diy::BlockID bid; 
       bid.gid = it->first; 
       bid.proc = app.rank(bid.gid);
+
+      _local_unfinished_particles += it->second.size();
 
       if (bid.gid == b.gid) { 
         b.particles.insert(b.particles.end(), (it->second).begin(), (it->second).end());
@@ -137,12 +153,20 @@ struct TraceBlockRound { // functor for doing a round of particle tracing in epo
             flag = true;
             break;
           }
+
+
         }
         if (!flag) {
           fprintf(stderr, "ERROR: bid is not in cp.link neighbors\n");
           assert (false);
         }
+        for (size_t ii=0; ii<it->second.size(); ii++){
+                  fprintf (stderr, "{%d->%d (%d)} ", b.gid, bid, it->second[ii].id);
+        }
+         fprintf (stderr, "\n");
         cp.enqueue(bid, it->second);
+        
+
       }
     }
 
@@ -152,6 +176,7 @@ struct TraceBlockRound { // functor for doing a round of particle tracing in epo
   }
 
   CPTApp_Sync& app;
+  
 };
 
 
@@ -241,38 +266,65 @@ void CPTApp_Sync::exec()
           #endif
         }
 
+        float clb[4], cub[4]; // core_start and core_size
+        b.get_core_st_sz(num_dims(), clb, cub);
+
+        fprintf(stderr, "gid: %d, (%f %f) (%f %f) (%f %f) \n", gid, clb[0], cub[0], clb[1], cub[1], clb[2], cub[2]);
+
 
       }
 
       // prediction and generate ghost particles (not for baseline case)
 
 
-      // compute kd-tree based on prediction
+      // compute kd-tree based on currently stored points
       pt_cons_kdtree_exchange(*_master, *_assigner, _divisions, space_only() ? 3 : _num_dims, space_only(), _block_size, _ghost_size, _constrained, false, false);
 
 
 
 
-      // redistribute particles based based on kd-tree boundaries (not for baseline case)
+      // if prediction case, then filter out ghost particles
+
+
       _local_init_epoch = 0;
        BOOST_FOREACH(int gid, gids()) {
         Block &b = block(gid);
         _local_init_epoch += b.particles.size();
       }
       _local_done_epoch = 0;
+
+      int ctr = 0;
       while(true){ // epoch loop: each iteration is a round
           int init_epoch = 0, done_epoch = 0;
+          size_t total_particles = 0, total_unfinished_particles;
 
+         
 
           _master->foreach(TraceBlockRound(*this));
+
+          bool remote = true;
+          _master->exchange();
+          
+           MPI_Barrier(comm_world());
+
+
+           MPI_Allreduce(&_local_num_particles, &total_particles, 1, MPI_LONG, MPI_SUM, comm_world());
+           MPI_Allreduce(&_local_unfinished_particles, &total_unfinished_particles, 1, MPI_LONG, MPI_SUM, comm_world());
 
 
           // check if epoch is done
           MPI_Allreduce(&_local_init_epoch, &init_epoch, 1, MPI_INT, MPI_SUM, comm_world());
           MPI_Allreduce(&_local_done_epoch, &done_epoch, 1, MPI_INT, MPI_SUM, comm_world());
 
-          if (init_epoch == done_epoch) break; break;
+          if (comm_world_rank() == 0){
+            fprintf(stderr, "init_epoch %d, done_epoch %d, _local_num_particles %ld, total_particles %ld, total_unfinished_particles %ld\n", init_epoch, done_epoch, _local_num_particles, total_particles, total_unfinished_particles);
+          }
+         
+          ctr++;
+          if (ctr==2) break;
 
+
+          if (init_epoch == done_epoch) break; 
       }
 
 

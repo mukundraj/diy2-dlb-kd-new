@@ -27,6 +27,8 @@ struct ConstrainedKDTreeBlock
     int             num_rounds;
     bool            finished;
     int wgt;
+    int id;
+    int num_esteps;
   };
   std::vector<Point> points;
   //std::vector<Particle>  points;

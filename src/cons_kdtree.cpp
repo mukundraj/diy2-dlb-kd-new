@@ -58,6 +58,8 @@ void populate_cons_kdtree_block(Block* blk, const diy::Master::ProxyWithLink& cp
     b->points[i].num_rounds = blk->particles[i].num_rounds;
     b->points[i].finished = blk->particles[i].finished;
     b->points[i].wgt = blk->particles[i].wgt;
+    b->points[i].id = blk->particles[i].id;
+    b->points[i].num_esteps = blk->particles[i].num_esteps;
     // fprintf(stderr, "%d ", b->points[i].wgt); // mraj
   }
 
@@ -99,6 +101,8 @@ void extract_cons_kdtree_block(ConstrainedKDTreeBlock* b, const diy::Master::Pro
     p.num_rounds = b->points[i].num_rounds;
     p.finished = b->points[i].finished; //  = false
     p.wgt = b->points[i].wgt;
+    p.id = b->points[i].id;
+    p.num_esteps = b->points[i].num_esteps;
     blk->particles.push_back(p);
 
     // fprintf(stderr, "%d ", p.wgt); // mraj
