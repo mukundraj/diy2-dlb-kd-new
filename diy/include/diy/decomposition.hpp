@@ -126,6 +126,7 @@ namespace detail
     void            gid_to_coords(int gid, DivisionsVector& coords) const       { gid_to_coords(gid, coords, divisions); }
     int             coords_to_gid(const DivisionsVector& coords) const          { return coords_to_gid(coords, divisions); }
     void            fill_divisions(std::vector<int>& divisions) const;
+    std::vector<int> get_divisions() const;  // added by mraj
 
     void            fill_bounds(Bounds& bounds, const DivisionsVector& coords, bool add_ghosts = false) const;
     void            fill_bounds(Bounds& bounds, int gid, bool add_ghosts = false) const;
@@ -303,12 +304,42 @@ decompose(int rank, const StaticAssigner& assigner, const Creator& create)
     DivisionsVector coords;
     gid_to_coords(gid, coords);
 
-    Bounds core(dim), bounds(dim);
+    // Bounds core(dim), bounds(dim);
+    // Bounds core(dim), bounds(dim);
+    Bounds core(DIY_MAX_DIM), bounds(DIY_MAX_DIM);
     fill_bounds(core,   coords);
     fill_bounds(bounds, coords, true);
 
     // Fill link with all the neighbors
     Link link(dim, core, bounds);
+
+    #if 1 // added by mraj
+    // link all other blocks as neighbors
+    int size = 1;
+    for (int j = 0; j < dim; j ++) size *= divisions[j];
+
+
+    for (int j = 0; j < size; j ++) {
+      if (gid != j) {
+        DivisionsVector nhbr_coords;
+        gid_to_coords(j, nhbr_coords);
+
+        //int nhbr_gid = coords_to_gid(nhbr_coords);
+        BlockID bid; bid.gid = j; bid.proc = assigner.rank(j);
+        link.add_neighbor(bid);
+
+        // belows are no use currently
+        Bounds nhbr_bounds{3};
+        fill_bounds(nhbr_bounds, nhbr_coords);
+        link.add_bounds(nhbr_bounds);
+
+        Direction dir, wrap_dir;
+        link.add_direction(dir);
+        link.add_wrap(wrap_dir);
+      }
+    }
+#else  // original implementation
+
     std::vector<int>  offsets(dim, -1);
     offsets[0] = -2;
     while (!all(offsets, 1))
@@ -375,7 +406,7 @@ decompose(int rank, const StaticAssigner& assigner, const Creator& create)
       link.add_direction(dir);
       link.add_wrap(wrap_dir);
     }
-
+  #endif
     create(gid, core, bounds, domain, link);
   }
 }
@@ -591,6 +622,14 @@ fill_divisions(std::vector<int>& divisions_) const
     // assign the divisions
     for (size_t i = 0; i < missing_divs.size(); i++)
         divisions_[missing_divs[i].dim] = missing_divs[i].nb;
+}
+
+template<class Bounds>
+std::vector<int>
+diy::RegularDecomposer<Bounds>::
+get_divisions() const 
+{
+  return divisions;
 }
 
 template<class Bounds>

@@ -276,6 +276,8 @@ operator()(void* b_, const diy::ReduceProxy& srp, const ConstrainedKDTreePartner
 {
     Block* b = static_cast<Block*>(b_);
 
+
+
     int dim;
     if (srp.round() < partners.rounds()) {
 // before the final
@@ -294,7 +296,6 @@ operator()(void* b_, const diy::ReduceProxy& srp, const ConstrainedKDTreePartner
     else if (partners.swap_round(srp.round()) && partners.sub_round(srp.round()) < 0)       // link round
     {
 // after each time operator 3 (enqueue_exchange)
-
         dequeue_exchange(b, srp, dim);         // from the swap round
         split_to_neighbors(b, srp, dim);    
     }
@@ -332,6 +333,8 @@ operator()(void* b_, const diy::ReduceProxy& srp, const ConstrainedKDTreePartner
         add_histogram(b, srp, histogram);
         forward_histogram(b, srp, histogram);
     }
+
+    // fprintf(stderr, "DB round %d gid %d size %ld\n", srp.round(), srp.gid(), b->points.size());
 }
 
 template<class Block, class Point>
@@ -365,7 +368,7 @@ update_links(Block* b, const diy::ReduceProxy& srp, int dim, int round, int roun
     std::vector<float>  splits(link->size());
     for (int i = 0; i < link->size(); ++i)
     {
-        float split; diy::Direction dir;
+        float split; diy::Direction dir(DIY_MAX_DIM);
 
         int in_gid = link->target(i).gid;
         while(srp.incoming(in_gid))
@@ -450,12 +453,12 @@ update_links(Block* b, const diy::ReduceProxy& srp, int dim, int round, int roun
 
     if (lower)
     {
-        diy::Direction right;
+        diy::Direction right(DIY_MAX_DIM);
         right[dim] = 1;
         new_link.add_direction(right);
     } else
     {
-        diy::Direction left;
+        diy::Direction left(DIY_MAX_DIM);
         left[dim] = -1;
         new_link.add_direction(left);
     }

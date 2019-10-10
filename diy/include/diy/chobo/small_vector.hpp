@@ -168,12 +168,22 @@
 #endif
 
 
+
 #if defined(CHOBO_SMALL_VECTOR_NO_DEBUG_BOUNDS_CHECK)
 #   define _CHOBO_SMALL_VECTOR_BOUNDS_CHECK(i)
 #else
 #   include <cassert>
 #   define _CHOBO_SMALL_VECTOR_BOUNDS_CHECK(i) assert((i) < this->size())
 #endif
+
+// void forbp();
+
+// #if defined(CHOBO_SMALL_VECTOR_NO_DEBUG_BOUNDS_CHECK)
+// #   define _CHOBO_SMALL_VECTOR_BOUNDS_CHECK(i)
+// #else
+// #   include <cassert>
+// #   define _CHOBO_SMALL_VECTOR_BOUNDS_CHECK(i) if ((i) >= this->size()){ fprintf(stderr, "SIZES: %ld %ld", i, this->size()); forbp(); while(1){}}
+// #endif
 
 namespace chobo
 {

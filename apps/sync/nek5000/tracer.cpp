@@ -32,6 +32,7 @@ void CSyncNekApp::initialize_particles(Block& b,
   // const int stride[3] = {512, 512, 512};
   // const int stride[3] = {128, 128, 128};
   const int stride[3] = {4, 4, 4};
+  // const int stride[3] = {8, 8, 8};
   const float gap[3] = {1.f/(stride[0]-1) * (float)(domain_size()[0]-1),
                         1.f/(stride[1]-1) * (float)(domain_size()[1]-1),
                         1.f/(stride[2]-1) * (float)(domain_size()[2]-1)};
@@ -128,48 +129,87 @@ void CSyncNekApp::trace_particles_core(Block& b,
 
 
   BOOST_FOREACH (Particle& p, particles) {
+
     int steps = NUM_STEPS;
+    int round_steps = 0;
     // fprintf(stderr, "((%f %f %f)) ", p[0], p[1], p[2]);
-    while (p.num_steps < max_trace_size) {
-      int rtn = trace_3D_rk1(gst, gsz, lst, lsz, vars, p.coords, stepsize);
-      // int rtn = trace_3D_rk1_core(clb, cub, lst, lsz, vars, p.coords, stepsize);
-      if (rtn == TRACE_OUT_OF_BOUND) break; // out of core size
+    while (p.num_steps < max_trace_size && !p.epoch_finished) {
+      // int rtn = trace_3D_rk1(gst, gsz, lst, lsz, vars, p.coords, stepsize);
+      int rtn = trace_3D_rk1_core(clb, cub, lst, lsz, vars, p.coords, stepsize);
+      if (rtn == TRACE_OUT_OF_BOUND) {
+        break; // out of core size
+      }
       add_workload();
       if (rtn == TRACE_CRITICAL_POINT || rtn == TRACE_NO_VALUE) {
         p.finished = true;
+        // _local_done_epoch ++;
         break;
       }
       p.num_steps ++;
       p.num_esteps ++;
+      round_steps ++;
       steps --;
+
+      if (p.num_esteps == EPOCH_STEPS){// && !p.epoch_finished){ 
+      // if epoch is done, then kd-tree rebalance, else continue with same partition
+        _local_done_epoch++;
+        p.epoch_finished = true;
+        p.num_esteps = 0;
+        break;
+      }
       
       if (steps <= 0) break;
     }
 
-    if (!inside_domain(p.coords) || p.num_steps >= max_trace_size)
+    if (!inside_domain(p.coords) || p.num_steps >= max_trace_size){
       p.finished = true;
+      // _local_done_epoch++;
+    }
 
     if (p.finished) {
       finished_particles[p.home_gid].push_back(p);
       _local_done ++;
-      _local_done_epoch++;
+      if (!p.epoch_finished){
+        p.epoch_finished = true;
+        _local_done_epoch++;
+      }
      // fprintf(stderr, " F (pid (%d) %d %d, %d)\n", p.id, p.num_steps, p.finished, b.gid);
     } else {
 
+
+      const int dst_gid = bound_gid(pt2gid(p.coords)); // TODO
+
+      if (p.num_esteps>0)
+        fprintf(stderr, " UNF (pid (%d) [%d %d %d], %d, %d %d) (%f %f %f)\n", p.id, round_steps, p.num_esteps, p.num_steps, p.finished, b.gid,  dst_gid, p.coords[0], p.coords[1], p.coords[2]);
+
+
       if (p.num_esteps == EPOCH_STEPS){ 
       // if epoch is done, then kd-tree rebalance, else continue with same partition
-        _local_done_epoch++;
-        
+        // _local_done_epoch++; // already incremented earlier
+        p.num_esteps = 0;
       }
-      p.num_esteps = 0;
-      const int dst_gid = bound_gid(pt2gid(p.coords)); // TODO
+
+      
+
+
+
+
+
       unfinished_particles[dst_gid].push_back(p);
 
-      if (b.gid ==7){
-        p.id=999;
-          unfinished_particles[6].push_back(p);
-      }
-      fprintf(stderr, " UNF (pid (%d) %d %d, %d %d)\n", p.id, p.num_steps, p.finished, b.gid,  dst_gid);
+
+    
+      
+     
+
+      // if (b.gid ==7){
+      //   p.id=999;
+      //     unfinished_particles[6].push_back(p);
+      // }
+
+      
+
+       
     }
   }
 }

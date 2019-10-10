@@ -120,7 +120,7 @@ int trace_3D_rk1_core(
   if (!inside_clb_cub(3, clb, cub, X)) return TRACE_OUT_OF_BOUND;
 
   float v[3];
-  //if (!lerp3D(X, gst, gsz, 3, vec, v))
+  // if (!lerp3D(X, gst, gsz, 3, vec, v))
   if (!lerp3D_core(X, clb, cub, lst, lsz, 3, vec, v))
     return TRACE_OUT_OF_BOUND;
 

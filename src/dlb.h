@@ -39,6 +39,7 @@ struct Particle {
   int wgt;
   bool real;
   int num_esteps; // number of epoch steps
+  bool epoch_finished;
 
   Particle() {
     id = 0;
@@ -49,6 +50,8 @@ struct Particle {
     finished = false;
     wgt = 1;
     real = true;
+    epoch_finished = false;
+
   }
 
   const float& operator [](int i) const {return coords[i];}

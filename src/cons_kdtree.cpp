@@ -17,8 +17,8 @@ void populate_cons_kdtree_block(Block* blk, const diy::Master::ProxyWithLink& cp
   diy::Master* kdtree_master = aux->master;
   int                    dim = aux->dim;
   bool                   space_only = aux->space_only;
-
-  CBounds domain;
+  // fprintf(stderr, "blk->particles.size() %ld\n", blk->particles.size());
+  CBounds domain{4};
 
   for (int i = 0; i < dim; i ++) {
     domain.min[i] = (blk->data_bounds).min[i];
@@ -29,7 +29,7 @@ void populate_cons_kdtree_block(Block* blk, const diy::Master::ProxyWithLink& cp
   RCLink* l = new RCLink(dim, domain, domain);
   //l->set_regular_core(domain);
 
-  CBounds divs;
+  CBounds divs{4};
   for (int i = 0; i < dim; i ++) {
     divs.min[i] = 0;
     divs.max[i] = aux->divs[i]-1;
@@ -68,7 +68,7 @@ void populate_cons_kdtree_block(Block* blk, const diy::Master::ProxyWithLink& cp
     b->domain_mins[i] = (blk->data_bounds).min[i];
     b->domain_maxs[i] = (blk->data_bounds).max[i];
   }
-
+// fprintf(stderr, "Ib->points.size() %ld\n", b->points.size());
 //fprintf(stderr, "populate: dim = %d, blk->particles.size() = %d\n", dim, blk->particles.size());
 }
 
@@ -86,7 +86,6 @@ void extract_cons_kdtree_block(ConstrainedKDTreeBlock* b, const diy::Master::Pro
   // copy out the particles
   //blk->num_particles = b->points.size();
   blk->particles.clear();
-  
   for (size_t i = 0; i < b->points.size(); i ++) { // TODO refine this
     Particle p;
     p.coords[0] = b->points[i][0];
@@ -103,6 +102,7 @@ void extract_cons_kdtree_block(ConstrainedKDTreeBlock* b, const diy::Master::Pro
     p.wgt = b->points[i].wgt;
     p.id = b->points[i].id;
     p.num_esteps = b->points[i].num_esteps;
+    p.epoch_finished = false; // reset to false here since rebalance done only between epochs
     blk->particles.push_back(p);
 
     // fprintf(stderr, "%d ", p.wgt); // mraj
@@ -167,9 +167,23 @@ double pt_cons_kdtree_exchange(
   populate_master.space_only = space_only;
   for (int i = 0; i < dim; i ++)
     populate_master.divs[i] = divisions[i];
-  master.foreach<Block>(&populate_cons_kdtree_block, &populate_master);
+  // master.foreach<Block>(&populate_cons_kdtree_block, &populate_master);
+
+  master.foreach([&](Block* b, const diy::Master::ProxyWithLink& cp)
+                    {
+
+                        populate_cons_kdtree_block(b, cp, &populate_master);
+                        // trace_block_exchange(b,
+                        //                      cp,
+                        //                      decomposer,
+                        //                      assigner,
+                        //                      max_steps,
+                        //                      seed_rate,
+                        //                      share_face,
+                        //                      synth);
+});
  
-  CBounds domain;
+  CBounds domain{4};
   DBounds data_domain = master.block<Block>(master.loaded_block())->data_bounds;
   for (int i = 0; i < dim; i ++) {
     domain.min[i] = data_domain.min[i];
@@ -179,6 +193,8 @@ double pt_cons_kdtree_exchange(
   //if (sampling)
   //    diy::kdtree_sampling(kdtree_master, assigner, 3, domain, &KDTreeBlock::points, bins, wrap);
   size_t bins = 2048;      // 2048 histogram bins for uisabel and geos5; for nek small it is 8192
+
+
   diy::cons_kdtree(kdtree_master, assigner, dim, domain, divisions, block_size, ghost_size, constrained, first, &ConstrainedKDTreeBlock::points, bins);
 //fprintf(stderr, "after k_d tree.\n");
   //diy::Master pt_master(master.communicator(),  master.threads());//, -1);
@@ -195,7 +211,17 @@ double pt_cons_kdtree_exchange(
   extract_master.constrained = constrained;
   extract_master.first = first;
   extract_master.async = async;
-  kdtree_master.foreach<ConstrainedKDTreeBlock>(&extract_cons_kdtree_block, &extract_master);
+  // kdtree_master.foreach<ConstrainedKDTreeBlock>(&extract_cons_kdtree_block, &extract_master);
+
+   kdtree_master.foreach([&](ConstrainedKDTreeBlock* b, const diy::Master::ProxyWithLink& cp)
+    {
+              // fprintf(stderr, "Lb->points.size() %ld %d\n", b->points.size(), cp.gid());
+              extract_cons_kdtree_block(b, cp, &extract_master);
+
+    });
+
+
+
   //kdtree_master.foreach<ConstrainedKDTreeBlock>(&extract_cons_kdtree_block, &master);
   master.set_expected(kdtree_master.expected());
 

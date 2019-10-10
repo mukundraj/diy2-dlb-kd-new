@@ -120,15 +120,15 @@ void reduce(Master&                    master,        //!< master object
 
   unsigned round;
   for (round = 0; round < partners.rounds(); ++round)
-  {
+  { 
     log->debug("Round {}", round);
     master.foreach(detail::ReductionFunctor<Block,Partners>(round, reduce, partners, assigner),
                    detail::SkipInactiveOr<Partners,Skip>(round, partners, skip));
     master.execute();
-
+    
     int expected = 0;
     for (unsigned i = 0; i < master.size(); ++i)
-    {
+    { //fprintf(stderr, "here1\n");
       if (partners.active(round + 1, master.gid(i), master))
       {
         std::vector<int> incoming_gids;
@@ -136,16 +136,21 @@ void reduce(Master&                    master,        //!< master object
         expected += static_cast<int>(incoming_gids.size());
         master.incoming(master.gid(i)).clear();
       }
+      // fprintf(stderr, "here2\n");
     }
+    
     master.set_expected(expected);
     master.flush();
   }
+
+  // fprintf(stderr, "here1\n");
   // final round
   log->debug("Round {}", round);
   master.foreach(detail::ReductionFunctor<Block,Partners>(round, reduce, partners, assigner),
                  detail::SkipInactiveOr<Partners,Skip>(round, partners, skip));
-
+  // fprintf(stderr, "here2\n");
   master.set_expected(original_expected);
+  // fprintf(stderr, "here3\n");
 }
 
 /**
@@ -175,22 +180,26 @@ namespace detail
 
     void        operator()(Block* b, const Master::ProxyWithLink& cp) const
     {
-      if (!partners.active(round, cp.gid(), *cp.master())) return;
 
+      if (!partners.active(round, cp.gid(), *cp.master())) return;
+      
       std::vector<int> incoming_gids, outgoing_gids;
       if (round > 0)
           partners.incoming(round, cp.gid(), incoming_gids, *cp.master());        // receive from the previous round
       if (round < partners.rounds())
           partners.outgoing(round, cp.gid(), outgoing_gids, *cp.master());        // send to the next round
-
+      
+      
       ReduceProxy   rp(cp, b, round, assigner, incoming_gids, outgoing_gids);
+      // fprintf(stderr, "HERE0 r %d gid %d\n" , round, cp.gid());
       reduce(b, rp, partners);
-
+      // fprintf(stderr, "HERE1 r %d gid %d\n", round, cp.gid() );
       // touch the outgoing queues to make sure they exist
       Master::OutgoingQueues& outgoing = *cp.outgoing();
       if (outgoing.size() < (size_t) rp.out_link().size())
         for (int j = 0; j < rp.out_link().size(); ++j)
           outgoing[rp.out_link().target(j)];       // touch the outgoing queue, creating it if necessary
+        
     }
 
     unsigned        round;

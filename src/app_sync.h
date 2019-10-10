@@ -56,6 +56,7 @@ protected:
   void gather_store_particles(const int count, const std::vector<Particle>& particles);
   void add_workload();
   int _total_steps, _round_steps, _pred_mismatch, _total_pred_mismatch; 
+  int _epoch_steps;
 
   uint64_t _max_workload;
   int _num_particles;

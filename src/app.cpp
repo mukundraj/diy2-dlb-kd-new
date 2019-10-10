@@ -14,7 +14,11 @@
 #include "common/utils.h"
 #include "cons_kdtree.h" 
 
-#define WRITE 0
+// void forbp(){
+//   fprintf(stderr, "In ForBP\n");
+// }
+
+#define WRITE 1
 
 typedef diy::DiscreteBounds DBounds; 
 typedef diy::RegularGridLink RGLink;
@@ -30,14 +34,16 @@ struct AddBlock { // functor
       const DBounds& bounds, 
       const DBounds& domain, 
       const RGLink& link) const {
+
+
     Block *b = new Block();
     RGLink *l = new RGLink(link);
     diy::Master &m = const_cast<diy::Master&>(master);
 
     int lid = m.add(gid, b, l);
-
     b->gid = gid;
     for (int i=0; i<4; i++) {  // redefined in the first k-d tree
+
       b->lb[i] = l->core().min[i];
       b->ub[i] = l->core().max[i];
       b->glb[i] = l->bounds().min[i];
@@ -45,7 +51,6 @@ struct AddBlock { // functor
       b->lload[i] = l->bounds().min[i];
       b->uload[i] = l->bounds().max[i];
     }
-
     b->data_bounds = domain;
   }
 
@@ -77,6 +82,19 @@ void CPTApp::init(int argc, char **argv)
 {
   _timestamp_start = MPI_Wtime();
   init_mpi(); 
+
+   // if (_comm_world_rank == 1)
+   //  {
+        
+
+   //      volatile  int dwait=0;
+   //      fprintf(stderr , "pid %ld  waiting  for  debugger\n"
+   //          , (long)getpid ());
+   //          while(dwait==0) { /*  change  ’i’ in the  debugger  */ }
+
+   //  }
+   //  MPI_Barrier(_comm_world);
+
 
   if (_comm_world_rank == 0)
     parse_arguments(argc, argv);
@@ -111,7 +129,6 @@ void CPTApp::init(int argc, char **argv)
   diy::RegularDecomposer<DBounds>::CoordinateVector ghosts;
   for (int i = 0; i < num_dims; i ++)
     ghosts.push_back(_ghost_size[i]); // ghosts 
-
   _decomposer = new diy::RegularDecomposer<DBounds>(
       num_dims, 
       _domain, 
@@ -120,7 +137,6 @@ void CPTApp::init(int argc, char **argv)
       share_face,
       wrap, 
       ghosts); 
-  
   _divisions = _decomposer->get_divisions();
 
   if (comm_world_rank() == 0) 
@@ -149,22 +165,20 @@ void CPTApp::init(int argc, char **argv)
     //_decomposer->set_ghosts(_ghosts);
   //} else 
   //  _decomposer->set_elastic_ghosts(false); 
-
   _decomposer->decompose(_communicator->rank(), *_assigner, addblock);
-
   _assigner->local_gids(comm_world_rank(), _gids); 
-
   //if (!is_baseline() && is_kd_tree())  // k-d tree to reassign bounds to blocks
   if (is_kd_tree() && _constrained)
     pt_cons_kdtree_exchange(*_master, *_assigner, _divisions, num_dims, space_only(), _block_size, _ghost_size, true, true, false);
-
+   
   std::vector<std::string> local_entities(gids().size());
   int n = 0;
-
   MPI_Barrier(_comm_world);
   double iostart = MPI_Wtime();
   _timestamps.push_back(iostart); // start
   BIL_Init(_comm_world); // BIL is used with comm_world
+  // fprintf(stderr, "!!!ASDF10!!!!\n");
+  
   BOOST_FOREACH(int gid, gids()) { // may be multiple blocks per proc. if _nb_per_proc > 1
     Block &b = block(gid);
 
@@ -200,6 +214,8 @@ void CPTApp::init(int argc, char **argv)
       else assert(false);
     }
   }
+
+
 
   BIL_Read();
   BIL_Finalize();
@@ -249,6 +265,8 @@ void CPTApp::init(int argc, char **argv)
   _timestamp_init = MPI_Wtime();
   _timestamps.push_back(_timestamp_init); // io
   _timecategories.push_back(0);
+
+
 }
 
 void CPTApp::probe_elastic_ghost_block_size(
