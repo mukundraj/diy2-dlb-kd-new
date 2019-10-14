@@ -323,7 +323,11 @@ void CPTApp_Sync::exec()
       //_timestamps.push_back(t0); // wait
       //_timecategories.push_back(2);
 
-      _master->foreach(TraceBlockSync(*this)); // trace particles
+      // _master->foreach(TraceBlockSync(*this)); // trace particles
+      _master->foreach([&](Block* b, const diy::Master::ProxyWithLink& cp)
+                    {
+                        TraceBlockSync(*this);
+        });
 
       double t1 = MPI_Wtime();
       _timestamps.push_back(t1); // trace

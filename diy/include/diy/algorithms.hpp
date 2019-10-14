@@ -12,6 +12,7 @@
 #include "detail/algorithms/sort.hpp"
 #include "detail/algorithms/kdtree.hpp"
 #include "detail/algorithms/kdtree-sampling.hpp"
+#include "detail/algorithms/cons-kdtree.hpp" // added by Jiang Zhang for constrained k-d tree decomposition
 
 #include "log.hpp"
 
@@ -179,6 +180,44 @@ namespace diy
 
         detail::KDTreePartners                          partners(dim, assigner.nblocks(), wrap, domain);
         reduce(master, assigner, partners, kdtree_partition);
+
+        // update master.expected to match the links
+        int expected = 0;
+        for (size_t i = 0; i < master.size(); ++i)
+            expected += master.link(i)->size_unique();
+        master.set_expected(expected);
+    }
+
+    /**
+     * \ingroup Algorithms
+     * \brief constrained k-d tree decomposition with partial data duplication for SciVis'17 submission 
+     * \brief (use histograms to determine split values)
+     * \brief added by Jiang Zhang
+     * \brief start from 12/06/2016
+     */
+    template<class Block, class Point>
+    void cons_kdtree(Master&                         master,      //!< master object
+                const Assigner&                 assigner,    //!< assigner object
+                int                             dim,         //!< dimensionality
+                const ContinuousBounds&         domain,      //!< global data extents
+                const std::vector<int>          divisions,   // added by Jiang
+                const int*                      block_size,  // added by Jiang
+                const int*                      ghost_size,  // added by Jiang
+                const bool                      constrained, // added by Jiang
+                const bool                      first,       // added by Jiang
+                std::vector<Point>  Block::*    points,      //!< input points to sort into kd-tree
+                size_t                          bins)        //!< number of histogram bins for splitting a dimension
+    {
+        if (assigner.nblocks() & (assigner.nblocks() - 1))
+        {
+            fprintf(stderr, "KD-tree requires a number of blocks that's a power of 2, got %d\n", assigner.nblocks());
+            std::abort();
+        }
+
+        detail::ConstrainedKDTreePartition<Block,Point>    cons_kdtree_partition(dim, points, block_size, ghost_size, constrained, first, bins);
+
+        detail::ConstrainedKDTreePartners                  partners(dim, assigner.nblocks(), domain, divisions);
+        reduce(master, assigner, partners, cons_kdtree_partition);
 
         // update master.expected to match the links
         int expected = 0;

@@ -91,6 +91,11 @@ namespace diy
       Direction  wrap(int i) const                      { return wrap_[i]; }
       Direction& wrap(int i)                            { return wrap_[i]; }
 
+      // divisions for constrained k-d tree added by Jiang
+      const Bounds& divs() const                        { return divs_; }
+      Bounds&       divs()                              { return divs_; }
+      void set_divs(const Bounds& divs)                 { divs_ = divs; }
+
       // bounds
       const Bounds& core() const                        { return core_; }
       Bounds&       core()                              { return core_; }
@@ -136,6 +141,8 @@ namespace diy
 
       DirMap    dir_map_;
       DirVec    dir_vec_;
+
+      Bounds                    divs_; // added by Jiang
 
       Bounds                    core_;
       Bounds                    bounds_;

@@ -127,6 +127,8 @@ namespace detail
     int             coords_to_gid(const DivisionsVector& coords) const          { return coords_to_gid(coords, divisions); }
     void            fill_divisions(std::vector<int>& divisions) const;
 
+    std::vector<int> get_divisions() const;  // added by Jiang
+
     void            fill_bounds(Bounds& bounds, const DivisionsVector& coords, bool add_ghosts = false) const;
     void            fill_bounds(Bounds& bounds, int gid, bool add_ghosts = false) const;
 
@@ -592,6 +594,18 @@ fill_divisions(std::vector<int>& divisions_) const
     for (size_t i = 0; i < missing_divs.size(); i++)
         divisions_[missing_divs[i].dim] = missing_divs[i].nb;
 }
+
+
+// added by Jiang
+template<class Bounds>
+std::vector<int>
+diy::RegularDecomposer<Bounds>::
+get_divisions() const 
+{
+  return divisions;
+}
+
+
 
 template<class Bounds>
 void

@@ -18,7 +18,7 @@ void populate_cons_kdtree_block(Block* blk, const diy::Master::ProxyWithLink& cp
   int                    dim = aux->dim;
   bool                   space_only = aux->space_only;
 
-  CBounds domain;
+  CBounds domain(3);
 
   for (int i = 0; i < dim; i ++) {
     domain.min[i] = (blk->data_bounds).min[i];
@@ -29,7 +29,7 @@ void populate_cons_kdtree_block(Block* blk, const diy::Master::ProxyWithLink& cp
   RCLink* l = new RCLink(dim, domain, domain);
   //l->set_regular_core(domain);
 
-  CBounds divs;
+  CBounds divs(3);
   for (int i = 0; i < dim; i ++) {
     divs.min[i] = 0;
     divs.max[i] = aux->divs[i]-1;
@@ -163,9 +163,14 @@ double pt_cons_kdtree_exchange(
   populate_master.space_only = space_only;
   for (int i = 0; i < dim; i ++)
     populate_master.divs[i] = divisions[i];
-  master.foreach<Block>(&populate_cons_kdtree_block, &populate_master);
+  // master.foreach<Block>(&populate_cons_kdtree_block, &populate_master);
+
+  master.foreach([&](Block* b, const diy::Master::ProxyWithLink& cp)
+                    {
+                        populate_cons_kdtree_block(b, cp, &populate_master);
+  });
  
-  CBounds domain;
+  CBounds domain(3);
   DBounds data_domain = master.block<Block>(master.loaded_block())->data_bounds;
   for (int i = 0; i < dim; i ++) {
     domain.min[i] = data_domain.min[i];
@@ -191,9 +196,20 @@ double pt_cons_kdtree_exchange(
   extract_master.constrained = constrained;
   extract_master.first = first;
   extract_master.async = async;
-  kdtree_master.foreach<ConstrainedKDTreeBlock>(&extract_cons_kdtree_block, &extract_master);
+  // kdtree_master.foreach<ConstrainedKDTreeBlock>(&extract_cons_kdtree_block, &extract_master);
+     kdtree_master.foreach([&](ConstrainedKDTreeBlock* b, const diy::Master::ProxyWithLink& cp)
+    {
+              // fprintf(stderr, "Lb->points.size() %ld %d\n", b->points.size(), cp.gid());
+              extract_cons_kdtree_block(b, cp, &extract_master);
+
+    });
+
   //kdtree_master.foreach<ConstrainedKDTreeBlock>(&extract_cons_kdtree_block, &master);
   master.set_expected(kdtree_master.expected());
+
+
+
+  fprintf(stderr, "master set_expected %d\n", kdtree_master.expected());
 
   return 0;
 }
