@@ -29,8 +29,8 @@ public:
   //int num_particles;
 
   /* data bounds */
-  DBounds data_bounds;
-  CBounds core_bounds;
+  DBounds data_bounds{4};
+  CBounds core_bounds{4};
 
 public:
   void get_ghost_st_sz(int ndims, int *gst, int *gsz);

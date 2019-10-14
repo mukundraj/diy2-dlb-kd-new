@@ -18,7 +18,7 @@ void populate_cons_kdtree_block(Block* blk, const diy::Master::ProxyWithLink& cp
   int                    dim = aux->dim;
   bool                   space_only = aux->space_only;
 
-  CBounds domain(3);
+  CBounds domain{4};
 
   for (int i = 0; i < dim; i ++) {
     domain.min[i] = (blk->data_bounds).min[i];
@@ -29,7 +29,7 @@ void populate_cons_kdtree_block(Block* blk, const diy::Master::ProxyWithLink& cp
   RCLink* l = new RCLink(dim, domain, domain);
   //l->set_regular_core(domain);
 
-  CBounds divs(3);
+  CBounds divs{4};
   for (int i = 0; i < dim; i ++) {
     divs.min[i] = 0;
     divs.max[i] = aux->divs[i]-1;
@@ -170,7 +170,7 @@ double pt_cons_kdtree_exchange(
                         populate_cons_kdtree_block(b, cp, &populate_master);
   });
  
-  CBounds domain(3);
+  CBounds domain{4};
   DBounds data_domain = master.block<Block>(master.loaded_block())->data_bounds;
   for (int i = 0; i < dim; i ++) {
     domain.min[i] = data_domain.min[i];

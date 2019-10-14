@@ -78,17 +78,17 @@ void CPTApp::init(int argc, char **argv)
   _timestamp_start = MPI_Wtime();
   init_mpi(); 
 
-    if (_comm_world_rank == 1)
-    {
+    // if (_comm_world_rank == 1)
+    // {
         
 
-        volatile  int dwait=0;
-        fprintf(stderr , "pid %ld  waiting  for  debugger\n"
-            , (long)getpid ());
-            while(dwait==0) { /*  change  ’i’ in the  debugger  */ }
+    //     volatile  int dwait=0;
+    //     fprintf(stderr , "pid %ld  waiting  for  debugger\n"
+    //         , (long)getpid ());
+    //         while(dwait==0) { /*  change  ’i’ in the  debugger  */ }
 
-    }
-    MPI_Barrier(_comm_world);
+    // }
+    // MPI_Barrier(_comm_world);
 
   if (_comm_world_rank == 0)
     parse_arguments(argc, argv);

@@ -120,7 +120,7 @@ protected:
   diy::Master *_master;
   diy::RoundRobinAssigner *_assigner;
   diy::RegularDecomposer<DBounds> *_decomposer;
-  DBounds _domain;
+  DBounds _domain{4};
 
   int _nt_loops;
   std::vector<int> _divisions;
