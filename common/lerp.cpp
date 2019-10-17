@@ -23,9 +23,12 @@ bool inside_lb_ub(int num_dims, const int *lb, const int *ub, const int *p)
 
 bool inside_clb_cub(int num_dims, const float *clb, const float *cub, const float *p)
 {
-  for (int i = 0; i < num_dims; i ++) 
+
+
+  for (int i = 0; i < num_dims; i ++){
     if (p[i]<clb[i] || p[i]>=cub[i])
       return false;
+  }
   return true;
 }
 

@@ -321,6 +321,22 @@ int RegularPartitioner::gid2rank(int gid) const
   return gid % _np; 
 }
 
+// int RegularPartitioner::pt2gid_core(const float *pt, std::vector<float>& nbr_bounds, std::vector<float>& nbr_gids) const{
+
+//   int gid = -1;
+//   for (int i = 0; i< nbr_gids.size(); i++){
+//     if (pt[0]>=nbr_bounds[i*6+0] && pt[0]<nbr_bounds[i*6+1] &&
+//           pt[1]>=nbr_bounds[i*6+2] && pt[1]<nbr_bounds[i*6+3] && 
+//             pt[2]>=nbr_bounds[i*6+4] && pt[2]<nbr_bounds[i*6+5]){
+
+//             gid = nbr_gids[i];
+//     }
+//   }
+
+//   assert(gid>-1);
+//   return gid;
+// }
+
 int RegularPartitioner::pt2gid(const float *pt) const 
 {
   int gid; 

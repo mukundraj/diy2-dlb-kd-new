@@ -12,6 +12,9 @@ const int EPOCH_STEPS = 128;
 const int NUM_STEPS = 32; // 50 for small data, 200 for 12GB data
 // const float pred_step = 10.0;
 
+typedef     diy::RegularContinuousLink  RCLink;
+typedef     diy::ContinuousBounds       Bounds;
+
 CSyncNekApp::CSyncNekApp()
 {
 }
@@ -114,10 +117,56 @@ void CSyncNekApp::trace_particles(Block& b,
   }
 }
 
+static int pt2gid_core(int id, const float *pt, std::vector<float>& nbr_bounds, std::vector<int>& nbr_gids, int cgid){
+
+
+  int gid = -1;
+  for (int i = 0; i< nbr_gids.size(); i++){
+    if (pt[0]>=nbr_bounds[i*6+0] && pt[0]<nbr_bounds[i*6+1] &&
+          pt[1]>=nbr_bounds[i*6+2] && pt[1]<nbr_bounds[i*6+3] && 
+            pt[2]>=nbr_bounds[i*6+4] && pt[2]<nbr_bounds[i*6+5]){
+
+            gid = nbr_gids[i];
+          
+          // if (id==27)
+          //   fprintf(stderr, "calort cgid %d (%f %f %f), %d %d, %f %f, %f %f, %f %f, gid %d\n", cgid, pt[0], pt[1], pt[2], nbr_bounds.size(), nbr_gids.size(), nbr_bounds[i*6+0], nbr_bounds[i*6+1], nbr_bounds[i*6+2], nbr_bounds[i*6+3], nbr_bounds[i*6+4], nbr_bounds[i*6+5], gid);
+
+
+    }
+  }
+
+  int idx = nbr_gids.size();
+  if (gid<=0)
+    if (pt[0]>=nbr_bounds[idx*6+0] && pt[0]<nbr_bounds[idx*6+1] &&
+            pt[1]>=nbr_bounds[idx*6+2] && pt[1]<nbr_bounds[idx*6+3] && 
+              pt[2]>=nbr_bounds[idx*6+4] && pt[2]<nbr_bounds[idx*6+5]){
+             
+            
+            gid = cgid;
+
+
+    }
+
+  if (gid<=0)
+  {
+
+  for (int i = 0; i< nbr_gids.size(); i++)
+    fprintf(stderr, "calort cgid %d (%f %f %f), %d %d, %f %f, %f %f, %f %f\n", cgid, pt[0], pt[1], pt[2], nbr_bounds.size(), nbr_gids.size(), nbr_bounds[i*6+0], nbr_bounds[i*6+1], nbr_bounds[i*6+2], nbr_bounds[i*6+3], nbr_bounds[i*6+4], nbr_bounds[i*6+5]);
+    // fprintf(stderr, "assert fail. gidsize %ld, (%f %f %f), %d , [%f %f] [%f %f] [%f %f], %d\n", nbr_gids.size(), pt[0], pt[1], pt[2], nbr_gids[i], nbr_gids[i*6+0], nbr_bounds[i*6+1], nbr_bounds[i*6+2], nbr_bounds[i*6+3], nbr_bounds[i*6+4], nbr_bounds[i*6+5], 77);
+  }
+  assert(gid>-1);
+
+   if (id==14)
+            fprintf(stderr, "AAAAA pid %d cgid %d (%f %f %f), %d %d, %f %f, %f %f, %f %f gid %d\n", id, cgid, pt[0], pt[1], pt[2], nbr_bounds.size(), nbr_gids.size(), nbr_bounds[idx*6+0], nbr_bounds[idx*6+1], nbr_bounds[idx*6+2], nbr_bounds[idx*6+3], nbr_bounds[idx*6+4], nbr_bounds[idx*6+5], gid);
+  return gid;
+}
+
+
 void CSyncNekApp::trace_particles_core(Block& b, 
     std::vector<Particle>& particles, 
     std::map<int, std::vector<Particle> >& unfinished_particles, 
-    std::map<int, std::vector<Particle> >& finished_particles) 
+    std::map<int, std::vector<Particle> >& finished_particles,
+    const diy::Master::ProxyWithLink &cp) 
 {
   const float **vars = (const float**)(b.vars.data());
   int gst[4], gsz[4], lst[4], lsz[4];
@@ -132,7 +181,7 @@ void CSyncNekApp::trace_particles_core(Block& b,
 
     int steps = NUM_STEPS;
     int round_steps = 0;
-    // fprintf(stderr, "((%f %f %f)) ", p[0], p[1], p[2]);
+    
     while (p.num_steps < max_trace_size && !p.epoch_finished) {
       // int rtn = trace_3D_rk1(gst, gsz, lst, lsz, vars, p.coords, stepsize);
       int rtn = trace_3D_rk1_core(clb, cub, lst, lsz, vars, p.coords, stepsize);
@@ -158,8 +207,9 @@ void CSyncNekApp::trace_particles_core(Block& b,
         break;
       }
       
-      if (steps <= 0) break;
+      // if (steps <= 0) break;
     }
+    fprintf(stderr, "particle %d ((%f %f %f)), %d %d %d \n", p.id, p[0], p[1], p[2],  p.num_steps, p.finished, cp.gid());
 
     if (!inside_domain(p.coords) || p.num_steps >= max_trace_size){
       p.finished = true;
@@ -173,11 +223,35 @@ void CSyncNekApp::trace_particles_core(Block& b,
         p.epoch_finished = true;
         _local_done_epoch++;
       }
-     // fprintf(stderr, " F (pid (%d) %d %d, %d)\n", p.id, p.num_steps, p.finished, b.gid);
+     // fprintf(stderr, " F (pid (%d) %d %d, %d)\n", p.id,  bp.num_steps, p.finished,.gid);
     } else {
 
+    // if (p.id==17) 
+      // fprintf(stderr, "piddd %d, %f %f %f, %d %d %d\n", p.id, p.coords[0], p.coords[1], p.coords[2], p.num_steps, p.finished, b.gid);
+      // int dst_gid = bound_gid(pt2gid(p.coords)); // TODO
+      // int dst_gid = bound_gid(pt2gid_core(p.id, p.coords, b.nbr_bounds, b.nbr_gids, cp.gid())); // TODO
+      int dst_gid = pt2gid_core(p.id, p.coords, b.nbr_bounds, b.nbr_gids, cp.gid()); // TODO
 
-      const int dst_gid = bound_gid(pt2gid(p.coords)); // TODO
+      //  RCLink*  link      = static_cast<RCLink*>(cp.link());
+      //  fprintf(stderr, "size %d\n", link->size());
+      //  for (int i = 0; i < link->size(); ++i)
+      // { fprintf(stderr, "link->bounds().min[0] (%ld %ld)\n", link->bounds().min[0], link->bounds().max[0]);
+      //   const Bounds& bounds = link->bounds(i);
+
+      //   if (p.coords[0]>link->bounds().min[0] && p.coords[0] < link->bounds().max[0]
+      //     && p.coords[1]>link->bounds().min[1] && p.coords[1] < link->bounds().max[1]
+      //     && p.coords[2]>link->bounds().min[2] && p.coords[2] < link->bounds().max[2])
+      //       {
+      //           dst_gid = link->target(i).gid;
+      //           assert(0);
+
+      //       }
+        
+
+      // } 
+
+
+      
 
       if (p.num_esteps>0)
         fprintf(stderr, " UNF (pid (%d) [%d %d %d], %d, %d %d) (%f %f %f)\n", p.id, round_steps, p.num_esteps, p.num_steps, p.finished, b.gid,  dst_gid, p.coords[0], p.coords[1], p.coords[2]);

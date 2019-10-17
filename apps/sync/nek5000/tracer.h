@@ -26,7 +26,8 @@ public:
   void trace_particles_core(Block& b, 
     std::vector<Particle>& particles, 
     std::map<int, std::vector<Particle> >& unfinished_particles, 
-    std::map<int, std::vector<Particle> >& finished_particles);
+    std::map<int, std::vector<Particle> >& finished_particles, 
+    const diy::Master::ProxyWithLink &cp);
 
   void trace_particles_kdtree(Block&,
       std::vector<Particle>&, // particles to trace

@@ -7,6 +7,7 @@
 #include <vector>
 #include <stdint.h>
 
+
 class RegularPartitioner
 {
 public: 
@@ -39,6 +40,7 @@ public:
   int gid2lid(int gid) const; 
   int gid2rank(int gid) const; 
   int pt2gid(const float *pt) const; 
+  // int pt2gid_core(const float *pt, std::vector<float>& nbr_bounds, std::vector<float>& nbr_gids) const; // added by mraj
   int pt2rank(const float *pt) const; 
 
 public:

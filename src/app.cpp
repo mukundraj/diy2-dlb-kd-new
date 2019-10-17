@@ -170,6 +170,8 @@ void CPTApp::init(int argc, char **argv)
   //if (!is_baseline() && is_kd_tree())  // k-d tree to reassign bounds to blocks
   if (is_kd_tree() && _constrained)
     pt_cons_kdtree_exchange(*_master, *_assigner, _divisions, num_dims, space_only(), _block_size, _ghost_size, true, true, false);
+
+
    
   std::vector<std::string> local_entities(gids().size());
   int n = 0;
@@ -522,10 +524,26 @@ void CPTApp::write_output_file()
         prev = _timestamps[i+1];
       }
     }
-
     ofile2.close();
 
     fprintf(stderr, "rank %d write balance finished\n", comm_world_rank());
+
+
+    stream.str("");
+    if (_appconf.block_mem_limit()>-1){
+    stream << std::to_string(_appconf.block_mem_limit())<<"/round_balance_"<<std::to_string(comm_world_size())<<".csv";
+    }else{
+      stream << "unlim/round_balance_"<<std::to_string(comm_world_size())<<".csv";
+    }
+    ofile2.open(stream.str().c_str());
+
+    for (int i = 0; i < _round_balance.size(); i ++) {
+        ofile2 << i << ":" << _round_balance[i] << ",";
+    }
+
+    ofile2.close();
+
+    fprintf(stderr, "rank %d write round_balance finished\n", comm_world_rank());
   }
 }
 

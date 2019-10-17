@@ -110,10 +110,40 @@ void extract_cons_kdtree_block(ConstrainedKDTreeBlock* b, const diy::Master::Pro
 
   diy::RegularContinuousLink* kdtree_link = static_cast<diy::RegularContinuousLink*>(cp.link());
 
+
   for (int i = 0; i < dim; i ++) {
     blk->core_bounds.min[i] = kdtree_link->core().min[i];
     blk->core_bounds.max[i] = kdtree_link->core().max[i];
   }
+
+    // kdtree_master.foreach([&](Block* b, const diy::Master::ProxyWithLink& cp) { 
+      RCLink*  link      = static_cast<RCLink*>(cp.link());
+       // fprintf(stderr, "gid %d, Lsize %d\n", cp.gid(), link->size());
+       
+       blk->nbr_bounds.clear();
+       blk->nbr_gids.clear();
+       for (int i = 0; i < link->size(); ++i)
+        { 
+          // fprintf(stderr, "link->bounds().min[0] %d (%f %f, %f %f, %f %f)\n", link->target(i).gid, link->bounds(i).min[0], link->bounds(i).max[0], link->bounds(i).min[1], link->bounds(i).max[1], link->bounds(i).min[2], link->bounds(i).max[2]);
+          blk->nbr_bounds.push_back(link->bounds(i).min[0]);
+          blk->nbr_bounds.push_back(link->bounds(i).max[0]);
+          blk->nbr_bounds.push_back(link->bounds(i).min[1]);
+          blk->nbr_bounds.push_back(link->bounds(i).max[1]);
+          blk->nbr_bounds.push_back(link->bounds(i).min[2]);
+          blk->nbr_bounds.push_back(link->bounds(i).max[2]);
+
+          blk->nbr_gids.push_back(link->target(i).gid);
+
+          // fprintf(stderr, "targetgid %d\n", link->target(i).gid );
+        }
+
+        blk->nbr_bounds.push_back(link->bounds().min[0]);
+        blk->nbr_bounds.push_back(link->bounds().max[0]);
+        blk->nbr_bounds.push_back(link->bounds().min[1]);
+        blk->nbr_bounds.push_back(link->bounds().max[1]);
+        blk->nbr_bounds.push_back(link->bounds().min[2]);
+        blk->nbr_bounds.push_back(link->bounds().max[2]);
+  // });
 
   /*blk->particles.insert(blk->particles.end(), b->points.begin(), b->points.end());
   BOOST_FOREACH (Particle &p, blk->particles) {
@@ -196,6 +226,16 @@ double pt_cons_kdtree_exchange(
 
 
   diy::cons_kdtree(kdtree_master, assigner, dim, domain, divisions, block_size, ghost_size, constrained, first, &ConstrainedKDTreeBlock::points, bins);
+
+
+  // kdtree_master.foreach([&](Block* b, const diy::Master::ProxyWithLink& cp) { 
+  //     RCLink*  link      = static_cast<RCLink*>(cp.link());
+  //      fprintf(stderr, "gid %d, Lsize %d\n", cp.gid(), link->size());
+  //      for (int i = 0; i < link->size(); ++i)
+  //       { fprintf(stderr, "link->bounds().min[0] %d (%f %f, %f %f, %f %f)\n", link->target(i).gid, link->bounds().min[0], link->bounds().max[0], link->bounds().min[1], link->bounds().max[1], link->bounds().min[2], link->bounds().max[2]);
+  //       }
+  // });
+
 //fprintf(stderr, "after k_d tree.\n");
   //diy::Master pt_master(master.communicator(),  master.threads());//, -1);
   //int gs[4] = {ghost_size[0], ghost_size[1], ghost_size[2], ghost_size[3]};
@@ -224,6 +264,7 @@ double pt_cons_kdtree_exchange(
 
   //kdtree_master.foreach<ConstrainedKDTreeBlock>(&extract_cons_kdtree_block, &master);
   master.set_expected(kdtree_master.expected());
+  // fprintf(stderr, "kdtree expected %d\n", kdtree_master.expected());
 
   return 0;
 }

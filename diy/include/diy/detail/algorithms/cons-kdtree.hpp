@@ -368,7 +368,7 @@ update_links(Block* b, const diy::ReduceProxy& srp, int dim, int round, int roun
     std::vector<float>  splits(link->size());
     for (int i = 0; i < link->size(); ++i)
     {
-        float split; diy::Direction dir(DIY_MAX_DIM);
+        float split; diy::Direction dir(dim_, 0);
 
         int in_gid = link->target(i).gid;
         while(srp.incoming(in_gid))
@@ -413,7 +413,7 @@ update_links(Block* b, const diy::ReduceProxy& srp, int dim, int round, int roun
                 //if (wrap)
                 //    new_link.add_wrap(find_wrap(new_link.bounds(), bounds, domain));
                 //else
-                new_link.add_wrap(diy::Direction());
+                new_link.add_wrap(diy::Direction(dim_, 0));
             }
         } else // non-aligned side
         {
@@ -434,7 +434,7 @@ update_links(Block* b, const diy::ReduceProxy& srp, int dim, int round, int roun
                     //if (wrap)
                     //    new_link.add_wrap(find_wrap(new_link.bounds(), bounds, domain));
                     //else
-                    new_link.add_wrap(diy::Direction());
+                    new_link.add_wrap(diy::Direction(dim_, 0));
                 }
             }
         }
@@ -453,12 +453,12 @@ update_links(Block* b, const diy::ReduceProxy& srp, int dim, int round, int roun
 
     if (lower)
     {
-        diy::Direction right(DIY_MAX_DIM);
+        diy::Direction right(dim_, 0);
         right[dim] = 1;
         new_link.add_direction(right);
     } else
     {
-        diy::Direction left(DIY_MAX_DIM);
+        diy::Direction left(dim_, 0);
         left[dim] = -1;
         new_link.add_direction(left);
     }

@@ -22,6 +22,9 @@ public:
   int lb[4], ub[4], // core lb/ub      start, end
       glb[4], gub[4]; // ghost lb/ub   start, end
   int lload[4], uload[4]; // bounds of data loading (added by Jiang)
+  std::vector<float> nbr_bounds; // added by mraj
+  std::vector<int> nbr_gids; // added by mraj
+
   std::vector<float*> vars;
   //int neighbors[8]; // key=nbr_dir_t.  val is -1 if no neighbor
 

@@ -125,11 +125,10 @@ struct TraceBlockRound { // functor for doing a round of particle tracing in epo
       incoming_particles.push_back(b.particles[i]);
     b.particles.clear();
 
-    
 
     // trace particles
     if (incoming_particles.size() > 0) {
-      app.trace_particles_core(b, incoming_particles, unfinished_particles, finished_particles);
+      app.trace_particles_core(b, incoming_particles, unfinished_particles, finished_particles, cp);
       incoming_particles.clear();
     
       for (std::map<int, std::vector<Particle> >::iterator it = finished_particles.begin(); it != finished_particles.end(); it ++) {
@@ -228,6 +227,7 @@ CPTApp_Sync::CPTApp_Sync() :
   _local_done(0),
   _total_steps(0),
   _round_steps(0),
+  _epoch_steps(0), 
   _max_workload(0),
   _num_particles(0),
   _pred_mismatch(0),
@@ -278,6 +278,8 @@ void CPTApp_Sync::exec()
         
       }
 
+
+
       // prediction and generate ghost particles (not for baseline case)
 
 
@@ -286,8 +288,16 @@ void CPTApp_Sync::exec()
 
 
 
-
       // if prediction case, then filter out ghost particles
+
+
+      _master->foreach([&](Block* b, const diy::Master::ProxyWithLink& cp) { 
+      RCLink*  link      = static_cast<RCLink*>(cp.link());
+       fprintf(stderr, "gid %d, Lsize %d\n", cp.gid(), link->size());
+       for (int i = 0; i < b->nbr_gids.size(); ++i)
+        { fprintf(stderr, " %d brgid %d (%f %f, %f %f, %f %f)\n", cp.gid(), b->nbr_gids[i], b->nbr_bounds[i*6+0], b->nbr_bounds[i*6+1], b->nbr_bounds[i*6+2], b->nbr_bounds[i*6+3], b->nbr_bounds[i*6+4], b->nbr_bounds[i*6+5]);
+        }
+      });
 
 
       _local_init_epoch = 0;
@@ -317,14 +327,14 @@ void CPTApp_Sync::exec()
           // _master->foreach(TraceBlockRound(*this));
           _master->foreach([&](Block* b, const diy::Master::ProxyWithLink& cp)
                     {
-                        fprintf(stderr, "ctr %d, rank %d, nparticles %ld\n", ctr, comm_world_rank(), b->particles.size() );
+                        // fprintf(stderr, "ctr %d, rank %d, nparticles %ld\n", ctr, comm_world_rank(), b->particles.size() );
                         TraceBlockRound tbr(*this);
                         tbr(b, cp);
 
           });
 
-          bool remote = true;
-          _master->exchange(remote);
+          // bool remote = true;
+          _master->exchange();
             
 
            MPI_Barrier(comm_world());
@@ -344,8 +354,16 @@ void CPTApp_Sync::exec()
           }
          
           ctr++;
-          if (ctr==100 ) break;
+          if (ctr==10 ) break;
 
+
+
+          std::vector<int> round_wl_num(comm_world_size());
+          MPI_Allgather(&_round_steps, 1, MPI_INT, round_wl_num.data(), 1, MPI_INT, comm_world());
+          if (comm_world_rank() == 0)
+            _round_balance.push_back((float)max_num(round_wl_num)/avg_num(round_wl_num));
+
+          _round_steps = 0;
 
           if (init_epoch == done_epoch){ // ONLY FOR TESTING: inner loop break condition (breaks from epoch)
             break; 
@@ -426,7 +444,7 @@ void CPTApp_Sync::exec()
       MPI_Allreduce(&_local_done, &done, 1, MPI_INT, MPI_SUM, comm_world());
 
       std::vector<int> wl_num(comm_world_size());
-      MPI_Allgather(&_round_steps, 1, MPI_INT, wl_num.data(), 1, MPI_INT, comm_world());
+      MPI_Allgather(&_epoch_steps, 1, MPI_INT, wl_num.data(), 1, MPI_INT, comm_world());
 
       if (comm_world_rank() == 0) 
         _max_workload += max_num(wl_num);
@@ -444,7 +462,7 @@ void CPTApp_Sync::exec()
       }
 #endif
 
-      _round_steps = 0;
+      _epoch_steps = 0;
       _nt_loops ++;
 
 #if STORE_PARTICLES
@@ -820,5 +838,6 @@ void CPTApp_Sync::gather_store_particles(const int count, const std::vector<Part
 void CPTApp_Sync::add_workload()
 {
   _round_steps ++;
+  _epoch_steps ++;
   _total_steps ++;
 }

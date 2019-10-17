@@ -21,7 +21,8 @@ public: // interface
   virtual void trace_particles_core(Block&, 
       std::vector<Particle>&, // particles to trace
       std::map<int, std::vector<Particle> >&, // unfinished particles
-      std::map<int, std::vector<Particle> >& // finished particles
+      std::map<int, std::vector<Particle> >&, // finished particles
+      const diy::Master::ProxyWithLink &cp
     ) = 0;
 
   virtual void trace_particles(Block&, 
