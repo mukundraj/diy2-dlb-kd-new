@@ -520,7 +520,8 @@ void CPTApp::write_output_file()
     //  _timestamps.size(), _timecategories.size(), _balance.size());
     for (int i = 0; i < _timecategories.size(); i ++) {
       if (_timecategories[i] == 2) {
-        ofile2 << _timestamps[i+1] - _timestamps[0] << ":" << _balance[n++] << ",";
+        ofile2 << _timestamps[i+1] - _timestamps[0] << ":" << _balance[n] << ":"<< _all_time_round_num[n]-1<< ",";
+        n ++;
         prev = _timestamps[i+1];
       }
     }

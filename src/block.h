@@ -24,6 +24,8 @@ public:
   int lload[4], uload[4]; // bounds of data loading (added by Jiang)
   std::vector<float> nbr_bounds; // added by mraj
   std::vector<int> nbr_gids; // added by mraj
+  // diy::RegularLink<CBounds> cons_kdtree_link; // added by mraj
+
 
   std::vector<float*> vars;
   //int neighbors[8]; // key=nbr_dir_t.  val is -1 if no neighbor

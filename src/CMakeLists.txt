@@ -4,6 +4,7 @@ set (sources
   cons_kdtree.cpp
   app.cpp
   app_sync.cpp
+  misc.cpp
   #app_threadpool.cpp
 )
 

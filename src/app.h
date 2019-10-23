@@ -108,6 +108,7 @@ protected:
 
   std::vector<float> _balance;
   std::vector<float> _round_balance;
+  std::vector<int> _all_time_round_num;
 
   bool _constrained;
 

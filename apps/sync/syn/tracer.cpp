@@ -90,6 +90,7 @@ void CSyncSynApp::trace_particles(Block& b,
       p.finished = true;
 
     if (p.finished) {
+      dprint("finished pid %d", p.id);
       finished_particles[p.home_gid].push_back(p);
       _local_done ++;
     } else {

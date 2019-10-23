@@ -110,6 +110,15 @@ void extract_cons_kdtree_block(ConstrainedKDTreeBlock* b, const diy::Master::Pro
 
   diy::RegularContinuousLink* kdtree_link = static_cast<diy::RegularContinuousLink*>(cp.link());
 
+  // // RCLink*     link = static_cast<RCLink*>(srp.master()->link(lid));
+  // RCLink*     kd_link = static_cast<RCLink*>(cp.master()->link(cp.gid()));
+
+
+
+  // blk->cons_kdtree_link = static_cast<diy::RegularContinuousLink*>(cp.link());
+  // static_cast<diy::RegularContinuousLink>(*cp.link());
+  // blk->cons_kdtree_link = static_cast<diy::RegularContinuousLink>(*cp.link());
+
 
   for (int i = 0; i < dim; i ++) {
     blk->core_bounds.min[i] = kdtree_link->core().min[i];
@@ -177,6 +186,9 @@ void extract_cons_kdtree_block(ConstrainedKDTreeBlock* b, const diy::Master::Pro
       blk->num_particles_initialized = -1;
     }
   }
+
+  // RCLink*     link2 = static_cast<RCLink*>(pt_master->link(cp.gid()));
+  // link2->swap(kdtree_link);
 
   delete b;     // safe to do since kdtree_master doesn't own the blocks (no create/destroy supplied)
 }
@@ -258,8 +270,13 @@ double pt_cons_kdtree_exchange(
               // fprintf(stderr, "Lb->points.size() %ld %d\n", b->points.size(), cp.gid());
               extract_cons_kdtree_block(b, cp, &extract_master);
 
+
     });
 
+
+   master.foreach([&](Block* b, const diy::Master::ProxyWithLink& cp){
+
+   });
 
 
   //kdtree_master.foreach<ConstrainedKDTreeBlock>(&extract_cons_kdtree_block, &master);

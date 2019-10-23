@@ -3,6 +3,7 @@
 #include "common/utils.h"
 #include "app_sync.h"
 #include "cons_kdtree.h"
+#include "misc.h"
 
 #define DEBUG 0
 #define STORE_PARTICLES 0
@@ -110,10 +111,10 @@ struct TraceBlockRound { // functor for doing a round of particle tracing in epo
         std::vector<Particle> ps;
         cp.dequeue(in[i], ps);
         incoming_particles.insert(incoming_particles.end(), ps.begin(), ps.end());
-        for (size_t ii=0; ii<ps.size(); ii++){
-          fprintf (stderr, "[%d (%d)] ", b.gid, ps[ii].id);
-        }
-        fprintf (stderr, "\n ");
+        // for (size_t ii=0; ii<ps.size(); ii++){
+        //   fprintf (stderr, "[%d (%d)] ", b.gid, ps[ii].id);
+        // }
+        // fprintf (stderr, "\n ");
       }
 
     }
@@ -163,10 +164,10 @@ struct TraceBlockRound { // functor for doing a round of particle tracing in epo
           fprintf(stderr, "ERROR: bid is not in cp.link neighbors\n");
           assert (false);
         }
-        for (size_t ii=0; ii<it->second.size(); ii++){
-                  fprintf (stderr, "{%d->%d (%d)} ", b.gid, bid, it->second[ii].id);
-        }
-         fprintf (stderr, "\n");
+        // for (size_t ii=0; ii<it->second.size(); ii++){
+        //           fprintf (stderr, "{%d->%d (%d)} ", b.gid, bid, it->second[ii].id);
+        // }
+        //  fprintf (stderr, "\n");
         
         cp.enqueue(bid, it->second);
         
@@ -248,6 +249,8 @@ void CPTApp_Sync::exec()
   int count = 0;
   if (is_kd_tree()) {  // parallel particle tracing with constrained k-d tree decomposition
     int epoch_ctr = 0;
+    int all_rounds_ctr = 0; // counts all rounds without resetting
+
     while (true) { // each iteration is an Epoch
       // double t0 = MPI_Wtime();
       //_timestamps.push_back(t0); // wait
@@ -291,13 +294,13 @@ void CPTApp_Sync::exec()
       // if prediction case, then filter out ghost particles
 
 
-      _master->foreach([&](Block* b, const diy::Master::ProxyWithLink& cp) { 
-      RCLink*  link      = static_cast<RCLink*>(cp.link());
-       fprintf(stderr, "gid %d, Lsize %d\n", cp.gid(), link->size());
-       for (int i = 0; i < b->nbr_gids.size(); ++i)
-        { fprintf(stderr, " %d brgid %d (%f %f, %f %f, %f %f)\n", cp.gid(), b->nbr_gids[i], b->nbr_bounds[i*6+0], b->nbr_bounds[i*6+1], b->nbr_bounds[i*6+2], b->nbr_bounds[i*6+3], b->nbr_bounds[i*6+4], b->nbr_bounds[i*6+5]);
-        }
-      });
+      // _master->foreach([&](Block* b, const diy::Master::ProxyWithLink& cp) { 
+      // RCLink*  link      = static_cast<RCLink*>(cp.link());
+      //  fprintf(stderr, "gid %d, Lsize %d\n", cp.gid(), link->size());
+      //  for (int i = 0; i < b->nbr_gids.size(); ++i)
+      //   { fprintf(stderr, " %d brgid %d (%f %f, %f %f, %f %f)\n", cp.gid(), b->nbr_gids[i], b->nbr_bounds[i*6+0], b->nbr_bounds[i*6+1], b->nbr_bounds[i*6+2], b->nbr_bounds[i*6+3], b->nbr_bounds[i*6+4], b->nbr_bounds[i*6+5]);
+      //   }
+      // });
 
 
       _local_init_epoch = 0;
@@ -306,13 +309,13 @@ void CPTApp_Sync::exec()
         _local_init_epoch += b.particles.size();
 
 
-        int gst[4], gsz[4], lst[4], lsz[4];
-        b.get_ghost_load_st_sz(num_dims(), gst, gsz, lst, lsz);
-        float clb[4], cub[4]; // core_start and core_size
-        b.get_core_st_sz(num_dims(), clb, cub);
-        fprintf(stderr, "gid: %d, (%f %f) (%f %f) (%f %f)// (%d %d %d) (%d %d %d) // (%d %d %d) (%d %d %d) \n", gid, clb[0], cub[0], clb[1], cub[1], clb[2], cub[2], 
-          gst[0], gst[1], gst[2], gsz[0], gsz[1], gsz[2],
-          lst[0], lst[1], lst[2], lsz[0], lsz[1], lsz[2]);
+        // int gst[4], gsz[4], lst[4], lsz[4];
+        // b.get_ghost_load_st_sz(num_dims(), gst, gsz, lst, lsz);
+        // float clb[4], cub[4]; // core_start and core_size
+        // b.get_core_st_sz(num_dims(), clb, cub);
+        // fprintf(stderr, "gid: %d, (%f %f) (%f %f) (%f %f)// (%d %d %d) (%d %d %d) // (%d %d %d) (%d %d %d) \n", gid, clb[0], cub[0], clb[1], cub[1], clb[2], cub[2], 
+        //   gst[0], gst[1], gst[2], gsz[0], gsz[1], gsz[2],
+        //   lst[0], lst[1], lst[2], lsz[0], lsz[1], lsz[2]);
 
       }
       _local_done_epoch = 0;
@@ -330,15 +333,15 @@ void CPTApp_Sync::exec()
                         // fprintf(stderr, "ctr %d, rank %d, nparticles %ld\n", ctr, comm_world_rank(), b->particles.size() );
                         TraceBlockRound tbr(*this);
                         tbr(b, cp);
-
+                  
           });
 
-          // bool remote = true;
-          _master->exchange();
+          bool remote = true;
+          _master->exchange(remote);
             
 
            MPI_Barrier(comm_world());
-            fprintf(stderr, "ctr %d done\n", ctr);
+            // fprintf(stderr, "ctr %d done, rank %d\n", ctr, comm_world_rank());
             MPI_Barrier(comm_world());
 
            MPI_Allreduce(&_local_num_particles, &total_particles, 1, MPI_LONG, MPI_SUM, comm_world());
@@ -350,19 +353,20 @@ void CPTApp_Sync::exec()
           MPI_Allreduce(&_local_done_epoch, &done_epoch, 1, MPI_INT, MPI_SUM, comm_world());
 
           if (comm_world_rank() == 0){
-            fprintf(stderr, "init_epoch %d, done_epoch %d, _local_num_particles %ld, total_particles (tot incoming at st o rnd) %ld, total_unfinished_particles %ld\n", init_epoch, done_epoch, _local_num_particles, total_particles, total_unfinished_particles);
+            dprint("init_epoch %d, done_epoch %d, _local_num_particles %ld, total_particles (tot incoming at st o rnd) %ld, total_unfinished_particles %ld", init_epoch, done_epoch, _local_num_particles, total_particles, total_unfinished_particles);
           }
          
-          ctr++;
-          if (ctr==10 ) break;
+          // ctr++;
+          // if (ctr==1000 ) break;
 
 
 
           std::vector<int> round_wl_num(comm_world_size());
           MPI_Allgather(&_round_steps, 1, MPI_INT, round_wl_num.data(), 1, MPI_INT, comm_world());
-          if (comm_world_rank() == 0)
+          if (comm_world_rank() == 0){
             _round_balance.push_back((float)max_num(round_wl_num)/avg_num(round_wl_num));
-
+            all_rounds_ctr ++;
+          }
           _round_steps = 0;
 
           if (init_epoch == done_epoch){ // ONLY FOR TESTING: inner loop break condition (breaks from epoch)
@@ -377,66 +381,68 @@ void CPTApp_Sync::exec()
         fprintf(stderr, "Epochs completed: %d\n", epoch_ctr);
       }
 
-
-//     MPI_Barrier(comm_world());
-//     double _time_pred_start = MPI_Wtime();   
-     
-//     BOOST_FOREACH(int gid, gids()) {
-//         Block &b = block(gid);
-
-//         if (pred_val()>0){
-//           // predict workload
-//           trace_particles_kdtree_predict(b, pred_val());
-//         }
-
-//       }
+      // if (epoch_ctr==10) break;
 
 
-//       MPI_Barrier(comm_world());
-//       double kd_start = MPI_Wtime();
-//       _time_prediction += kd_start - _time_pred_start;
-//       int num_particles_before = 0;
+        //     MPI_Barrier(comm_world());
+        //     double _time_pred_start = MPI_Wtime();   
+            
+        //     BOOST_FOREACH(int gid, gids()) {
+        //         Block &b = block(gid);
 
-//        BOOST_FOREACH(int gid, gids()) {
-//         Block &b = block(gid);
+        //         if (pred_val()>0){
+        //           // predict workload
+        //           trace_particles_kdtree_predict(b, pred_val());
+        //         }
 
-//         // load balance 
-//         pt_cons_kdtree_exchange(*_master, *_assigner, _divisions, space_only() ? 3 : _num_dims, space_only(), _block_size, _ghost_size, _constrained, false, false); 
-
-//       }
-
-//       MPI_Barrier(comm_world());
-//       double end = MPI_Wtime();
-//       _timestamps.push_back(end); // kdtree
-//       _timecategories.push_back(3);
-//       _time_kdtree += end - kd_start;
+        //       }
 
 
-//     double t0 = MPI_Wtime();
-//     BOOST_FOREACH(int gid, gids()) {
-//         Block &b = block(gid);
+        //       MPI_Barrier(comm_world());
+        //       double kd_start = MPI_Wtime();
+        //       _time_prediction += kd_start - _time_pred_start;
+        //       int num_particles_before = 0;
 
-//         // trace particles 
-//         std::map<int, std::vector<Particle> > unfinished_particles, finished_particles;
-//         std::vector<Particle> working_particles;
-//         working_particles.insert(working_particles.end(), b.particles.begin(), b.particles.end());
-//         b.particles.clear();
-//         if (working_particles.size() > 0) {
-// #if STORE_PARTICLES
-//           trace_particles_video(b, working_particles, particles_first, particles_second);
-// #else
-//           trace_particles_kdtree(b, working_particles, unfinished_particles, finished_particles);
-// #endif
-//         }
+        //        BOOST_FOREACH(int gid, gids()) {
+        //         Block &b = block(gid);
 
-//         num_particles_before += (int)b.particles.size();
-//       }
+        //         // load balance 
+        //         pt_cons_kdtree_exchange(*_master, *_assigner, _divisions, space_only() ? 3 : _num_dims, space_only(), _block_size, _ghost_size, _constrained, false, false); 
 
-//       double t1 = MPI_Wtime();
-//       _timestamps.push_back(t1); // trace
-//       _timecategories.push_back(1);
+        //       }
 
-//       _time_trace += t1 - t0;
+        //       MPI_Barrier(comm_world());
+        //       double end = MPI_Wtime();
+        //       _timestamps.push_back(end); // kdtree
+        //       _timecategories.push_back(3);
+        //       _time_kdtree += end - kd_start;
+
+
+        //     double t0 = MPI_Wtime();
+        //     BOOST_FOREACH(int gid, gids()) {
+        //         Block &b = block(gid);
+
+        //         // trace particles 
+        //         std::map<int, std::vector<Particle> > unfinished_particles, finished_particles;
+        //         std::vector<Particle> working_particles;
+        //         working_particles.insert(working_particles.end(), b.particles.begin(), b.particles.end());
+        //         b.particles.clear();
+        //         if (working_particles.size() > 0) {
+        // #if STORE_PARTICLES
+        //           trace_particles_video(b, working_particles, particles_first, particles_second);
+        // #else
+        //           trace_particles_kdtree(b, working_particles, unfinished_particles, finished_particles);
+        // #endif
+        //         }
+
+        //         num_particles_before += (int)b.particles.size();
+        //       }
+
+        //       double t1 = MPI_Wtime();
+        //       _timestamps.push_back(t1); // trace
+        //       _timecategories.push_back(1);
+
+        //       _time_trace += t1 - t0;
 
       // check if finished particle tracing
       int init, done; 
@@ -448,9 +454,10 @@ void CPTApp_Sync::exec()
 
       if (comm_world_rank() == 0) 
         _max_workload += max_num(wl_num);
-      if (comm_world_rank() == 0)
+      if (comm_world_rank() == 0){
         _balance.push_back((float)max_num(wl_num)/avg_num(wl_num));
-
+        _all_time_round_num.push_back(all_rounds_ctr);
+      }
 #if DEBUG
       if (comm_world_rank() == 0) {
         //_max_workload += max_num(wl_num);
@@ -474,7 +481,9 @@ void CPTApp_Sync::exec()
         //gather_store_cores(b); // core bounds for split
       }
 #endif
-
+        if (comm_world_rank() == 0){
+            dprint("init %d done %d", init, done);
+        }
       // if (init == done && done != 0) break; // main loop (outer loop) break condition
       if (init == done) break; // main loop (outer loop) break condition
 
