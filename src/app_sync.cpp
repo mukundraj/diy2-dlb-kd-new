@@ -112,7 +112,10 @@ struct TraceBlockRound { // functor for doing a round of particle tracing in epo
         cp.dequeue(in[i], ps);
         incoming_particles.insert(incoming_particles.end(), ps.begin(), ps.end());
         // for (size_t ii=0; ii<ps.size(); ii++){
-        //   fprintf (stderr, "[%d (%d)] ", b.gid, ps[ii].id);
+        //   // fprintf (stderr, "[%d (%d)] ", b.gid, ps[ii].id);
+        //   if (ps[ii].id == 204){
+        //           dprint("[%d (%d)], stps: %d, (p %f %f %f) ", b.gid, ps[ii].id, ps[ii].num_steps, ps[ii].coords[0], ps[ii].coords[1], ps[ii].coords[2]);
+        //   }
         // }
         // fprintf (stderr, "\n ");
       }
@@ -165,7 +168,10 @@ struct TraceBlockRound { // functor for doing a round of particle tracing in epo
           assert (false);
         }
         // for (size_t ii=0; ii<it->second.size(); ii++){
-        //           fprintf (stderr, "{%d->%d (%d)} ", b.gid, bid, it->second[ii].id);
+        //           // fprintf (stderr, "{%d->%d (%d)} ", b.gid, bid, it->second[ii].id);
+        //           if (it->second[ii].id == 204){
+        //             dprint("{%d->%d (%d), stps: %d, p (%f %f %f)} ", b.gid, bid, it->second[ii].id, it->second[ii].num_steps, it->second[ii].coords[0], it->second[ii].coords[1], it->second[ii].coords[2] );
+        //           }
         // }
         //  fprintf (stderr, "\n");
         
@@ -247,6 +253,7 @@ void CPTApp_Sync::exec()
     fprintf(stderr, "running...\n");
 
   int count = 0;
+  finished_status.resize(513);
   if (is_kd_tree()) {  // parallel particle tracing with constrained k-d tree decomposition
     int epoch_ctr = 0;
     int all_rounds_ctr = 0; // counts all rounds without resetting
@@ -284,6 +291,8 @@ void CPTApp_Sync::exec()
 
 
       // prediction and generate ghost particles (not for baseline case)
+      
+
 
 
       // compute kd-tree based on currently stored points
@@ -313,9 +322,8 @@ void CPTApp_Sync::exec()
         // b.get_ghost_load_st_sz(num_dims(), gst, gsz, lst, lsz);
         // float clb[4], cub[4]; // core_start and core_size
         // b.get_core_st_sz(num_dims(), clb, cub);
-        // fprintf(stderr, "gid: %d, (%f %f) (%f %f) (%f %f)// (%d %d %d) (%d %d %d) // (%d %d %d) (%d %d %d) \n", gid, clb[0], cub[0], clb[1], cub[1], clb[2], cub[2], 
-        //   gst[0], gst[1], gst[2], gsz[0], gsz[1], gsz[2],
-        //   lst[0], lst[1], lst[2], lsz[0], lsz[1], lsz[2]);
+        // dprint("gid: %d, (%f %f) (%f %f) (%f %f)// (%d %d %d) (%d %d %d) // (%d %d %d) (%d %d %d", gid, clb[0], cub[0], clb[1], cub[1], clb[2], cub[2], 
+        //   gst[0], gst[1], gst[2], gsz[0], gsz[1], gsz[2], lst[0], lst[1], lst[2], lsz[0], lsz[1], lsz[2]);
 
       }
       _local_done_epoch = 0;
@@ -323,17 +331,18 @@ void CPTApp_Sync::exec()
       int ctr = 0;
       while(true){ // epoch loop: each iteration is a round
           int init_epoch = 0, done_epoch = 0;
-          size_t total_particles = 0, total_unfinished_particles;
+          size_t total_particles = 0, total_unfinished_particles, finished_in_this_round;
 
-         
+         _local_finished_in_this_round = 0;
 
           // _master->foreach(TraceBlockRound(*this));
+
+          bool particles_in_transit = false;
           _master->foreach([&](Block* b, const diy::Master::ProxyWithLink& cp)
                     {
                         // fprintf(stderr, "ctr %d, rank %d, nparticles %ld\n", ctr, comm_world_rank(), b->particles.size() );
                         TraceBlockRound tbr(*this);
                         tbr(b, cp);
-                  
           });
 
           bool remote = true;
@@ -351,9 +360,10 @@ void CPTApp_Sync::exec()
           // check if epoch is done
           MPI_Allreduce(&_local_init_epoch, &init_epoch, 1, MPI_INT, MPI_SUM, comm_world());
           MPI_Allreduce(&_local_done_epoch, &done_epoch, 1, MPI_INT, MPI_SUM, comm_world());
+           MPI_Allreduce(&_local_finished_in_this_round, &finished_in_this_round, 1, MPI_INT, MPI_SUM, comm_world());
 
           if (comm_world_rank() == 0){
-            dprint("init_epoch %d, done_epoch %d, _local_num_particles %ld, total_particles (tot incoming at st o rnd) %ld, total_unfinished_particles %ld", init_epoch, done_epoch, _local_num_particles, total_particles, total_unfinished_particles);
+            dprint("init_epoch %d, done_epoch %d, _local_num_particles %ld, total_particles (tot incoming at st o rnd) %ld, total_unfinished_particles %ld, fin_in_round %d", init_epoch, done_epoch, _local_num_particles, total_particles, total_unfinished_particles, finished_in_this_round);
           }
          
           // ctr++;
@@ -370,6 +380,14 @@ void CPTApp_Sync::exec()
           _round_steps = 0;
 
           if (init_epoch == done_epoch){ // ONLY FOR TESTING: inner loop break condition (breaks from epoch)
+            
+            // To deal trapped particle case: partile=last unfinished + reaching max epoch steps + particle also exiting local, simultaneously
+            _master->foreach([&](Block* b, const diy::Master::ProxyWithLink& cp)
+                    {
+                        // fprintf(stderr, "ctr %d, rank %d, nparticles %ld\n", ctr, comm_world_rank(), b->particles.size() );
+                        TraceBlockRound tbr(*this);
+                        tbr(b, cp);
+            });
             break; 
           } 
       } // end while : round loop
@@ -381,7 +399,7 @@ void CPTApp_Sync::exec()
         fprintf(stderr, "Epochs completed: %d\n", epoch_ctr);
       }
 
-      // if (epoch_ctr==10) break;
+      // if (epoch_ctr==20) break;
 
 
         //     MPI_Barrier(comm_world());
@@ -535,6 +553,17 @@ void CPTApp_Sync::exec()
       }
 #endif
     } // end while : epoch loop
+    std::vector<int> global_finished_status(finished_status.size());
+    MPI_Reduce(&finished_status[0], &global_finished_status[0],finished_status.size() , MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+
+    if (comm_world_rank() == 0){
+      for (int i=0; i< global_finished_status.size(); i++){
+        if (global_finished_status[i]!=1)
+          dprint("Unfinished pid: %d", i);
+      }
+    }
+
+
   }
   else {  // data-parallel particle tracing without redistribution (TOD using MPI_Isend and MPI_Irecv)
     while (1) {

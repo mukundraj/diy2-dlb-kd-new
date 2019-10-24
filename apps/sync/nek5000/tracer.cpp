@@ -8,7 +8,7 @@
 #include "src/utils.hpp"
 #include "src/misc.h"
 
-const int max_trace_size = 256; //2048;
+const int max_trace_size = 2048; //2048;
 const float stepsize = 1.0;
 const int EPOCH_STEPS = 128;
 const int NUM_STEPS = 32; // 50 for small data, 200 for 12GB data
@@ -286,6 +286,9 @@ void CSyncNekApp::trace_particles_core(Block &b,
 			round_steps++;
 			steps--;
 
+			// if (p.id==204)
+			// 	dprint("stp%d p(%f %f %f)", p.num_steps, p.coords[0], p.coords[1], p.coords[2]);
+
 			if (p.num_esteps == EPOCH_STEPS)
 			{   // && !p.epoch_finished){
 				// if epoch is done, then kd-tree rebalance, else continue with same partition
@@ -310,6 +313,8 @@ void CSyncNekApp::trace_particles_core(Block &b,
 			// dprint("finished pid %d", p.id);
 			finished_particles[p.home_gid].push_back(p);
 			_local_done++;
+			finished_status[p.id]++;
+			_local_finished_in_this_round ++;
 			if (!p.epoch_finished)
 			{
 				p.epoch_finished = true;
@@ -320,8 +325,8 @@ void CSyncNekApp::trace_particles_core(Block &b,
 		else
 		{
 
-			// if (p.id==27)
-			// dprint("piddd %d, %f %f %f, %d %d %d", p.id, p.coords[0], p.coords[1], p.coords[2], p.num_steps, p.finished, b.gid);
+			// if (p.id==204)
+			// 	dprint("piddd %d, %f %f %f, %d %d %d", p.id, p.coords[0], p.coords[1], p.coords[2], p.num_steps, p.finished, b.gid);
 			// int dst_gid = bound_gid(pt2gid(p.coords)); // TODO
 			// int dst_gid = bound_gid(pt2gid_core(p.id, p.coords, b.nbr_bounds, b.nbr_gids, cp.gid())); // TODO
 			
