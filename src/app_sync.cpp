@@ -90,7 +90,7 @@ struct TraceBlockRound { // functor for doing a round of particle tracing in epo
   TraceBlockRound(CPTApp_Sync& app_) :
     app(app_) {}
 
-  void operator()(void *b_, const diy::Master::ProxyWithLink &cp) const {
+  void operator()(void *b_, const diy::Master::ProxyWithLink &cp, std::vector<Particle> &fake_particles, bool pred_round) const {
     Block &b = *static_cast<Block*>(b_);
     const int rank = cp.master()->communicator().rank(), gid = cp.gid(); 
     std::map<int, std::vector<Particle> > unfinished_particles, finished_particles;
@@ -132,7 +132,7 @@ struct TraceBlockRound { // functor for doing a round of particle tracing in epo
 
     // trace particles
     if (incoming_particles.size() > 0) {
-      app.trace_particles_core(b, incoming_particles, unfinished_particles, finished_particles, cp);
+      app.trace_particles_core(b, incoming_particles, unfinished_particles, finished_particles, cp, fake_particles, pred_round);
       incoming_particles.clear();
     
       for (std::map<int, std::vector<Particle> >::iterator it = finished_particles.begin(); it != finished_particles.end(); it ++) {
@@ -253,7 +253,7 @@ void CPTApp_Sync::exec()
     fprintf(stderr, "running...\n");
 
   int count = 0;
-  finished_status.resize(513);
+  // finished_status.resize(28);
   if (is_kd_tree()) {  // parallel particle tracing with constrained k-d tree decomposition
     int epoch_ctr = 0;
     int all_rounds_ctr = 0; // counts all rounds without resetting
@@ -266,7 +266,7 @@ void CPTApp_Sync::exec()
 #if STORE_PARTICLES
       std::vector<Particle> particles_first, particles_second;
 #endif
-
+       
        BOOST_FOREACH(int gid, gids()) {
         Block &b = block(gid);
 
@@ -281,26 +281,108 @@ void CPTApp_Sync::exec()
                     gather_store_cores(b); // core bounds for split
           #endif
         }
-
-
-
-
-        
       }
 
 
-
       // prediction and generate ghost particles (not for baseline case)
+      std::vector<Particle> fake_particles;
+      std::vector<Particle> orig_particles;
+      int orig_local_done = _local_done;
+      int orig_local_done_epoch = _local_done_epoch;
+      int orig_local_finished_in_this_round = _local_finished_in_this_round;
+
+      if (pred_val()>0){
+
+        _local_init_epoch = 0;
+       BOOST_FOREACH(int gid, gids()) {
+        Block &b = block(gid);
+        _local_init_epoch += b.particles.size();
+
+         BOOST_FOREACH (Particle &p, b.particles)
+	        {
+              p.epoch_finished = 0;
+          }
+        orig_particles = b.particles; 
+
+         
+
+      }
+      _local_done_epoch = 0;
+
+          // int tmp_ctr = 0;
+        // advect for epoch prediction
+         while(true){ // epoch loop: each iteration is a round
+          int init_epoch = 0, done_epoch = 0;
+          _master->foreach([&](Block* b, const diy::Master::ProxyWithLink& cp)
+                    {
+                        // fprintf(stderr, "ctr %d, rank %d, nparticles %ld\n", ctr, comm_world_rank(), b->particles.size() );
+                        TraceBlockRound tbr(*this);
+                        tbr(b, cp, fake_particles, true);
+          });;
+          bool remote = true;
+          _master->exchange(remote);
+
+         
+            // check if epoch is done
+          MPI_Allreduce(&_local_init_epoch, &init_epoch, 1, MPI_INT, MPI_SUM, comm_world());
+          MPI_Allreduce(&_local_done_epoch, &done_epoch, 1, MPI_INT, MPI_SUM, comm_world());
+
+          // dprint("exg of p loop %d %d", init_epoch, done_epoch);  
+
+          // tmp_ctr++;
+          // if (tmp_ctr==5) exit(0);
+
+          if (init_epoch == done_epoch){ 
+            
+            // To deal trapped particle case: partile=last unfinished + reaching max epoch steps + particle also exiting local, simultaneously
+            _master->foreach([&](Block* b, const diy::Master::ProxyWithLink& cp)
+                    {
+                        // fprintf(stderr, "ctr %d, rank %d, nparticles %ld\n", ctr, comm_world_rank(), b->particles.size() );
+                        TraceBlockRound tbr(*this);
+                        tbr(b, cp, fake_particles, true);
+            });
+            break; 
+          } 
+
+         }
+
+
+        // add the fake particles to b.particles 
+        BOOST_FOREACH(int gid, gids()) {
+        Block &b = block(gid);
+      
+          b.particles = orig_particles;
+          b.particles.insert(b.particles.end(), fake_particles.begin(), fake_particles.end());
+        }
+        
       
 
-
+      }
 
       // compute kd-tree based on currently stored points
       pt_cons_kdtree_exchange(*_master, *_assigner, _divisions, space_only() ? 3 : _num_dims, space_only(), _block_size, _ghost_size, _constrained, false, false);
 
 
-
       // if prediction case, then filter out ghost particles
+      if (pred_val()>0){
+        // remove fake particles & update init_epoch
+
+       
+
+        _local_init_epoch = 0;
+        BOOST_FOREACH (int gid, gids())
+        {
+          Block &b = block(gid);
+          b.particles = orig_particles;
+          _local_init_epoch += b.particles.size();
+          
+        }
+        _local_done = orig_local_done;
+        _local_done_epoch = orig_local_done_epoch;
+        _local_finished_in_this_round = orig_local_finished_in_this_round;
+
+        // _local_done_epoch = 0;
+      }
 
 
       // _master->foreach([&](Block* b, const diy::Master::ProxyWithLink& cp) { 
@@ -337,12 +419,11 @@ void CPTApp_Sync::exec()
 
           // _master->foreach(TraceBlockRound(*this));
 
-          bool particles_in_transit = false;
           _master->foreach([&](Block* b, const diy::Master::ProxyWithLink& cp)
                     {
                         // fprintf(stderr, "ctr %d, rank %d, nparticles %ld\n", ctr, comm_world_rank(), b->particles.size() );
                         TraceBlockRound tbr(*this);
-                        tbr(b, cp);
+                        tbr(b, cp, fake_particles, false);
           });
 
           bool remote = true;
@@ -362,9 +443,9 @@ void CPTApp_Sync::exec()
           MPI_Allreduce(&_local_done_epoch, &done_epoch, 1, MPI_INT, MPI_SUM, comm_world());
            MPI_Allreduce(&_local_finished_in_this_round, &finished_in_this_round, 1, MPI_INT, MPI_SUM, comm_world());
 
-          if (comm_world_rank() == 0){
-            dprint("init_epoch %d, done_epoch %d, _local_num_particles %ld, total_particles (tot incoming at st o rnd) %ld, total_unfinished_particles %ld, fin_in_round %d", init_epoch, done_epoch, _local_num_particles, total_particles, total_unfinished_particles, finished_in_this_round);
-          }
+          // if (comm_world_rank() == 0){
+          //   dprint("init_epoch %d, done_epoch %d, _local_num_particles %ld, total_particles (tot incoming at st o rnd) %ld, total_unfinished_particles %ld, fin_in_round %d", init_epoch, done_epoch, _local_num_particles, total_particles, total_unfinished_particles, finished_in_this_round);
+          // }
          
           // ctr++;
           // if (ctr==1000 ) break;
@@ -379,25 +460,25 @@ void CPTApp_Sync::exec()
           }
           _round_steps = 0;
 
-          if (init_epoch == done_epoch){ // ONLY FOR TESTING: inner loop break condition (breaks from epoch)
-            
+          if (init_epoch == done_epoch){ 
+
             // To deal trapped particle case: partile=last unfinished + reaching max epoch steps + particle also exiting local, simultaneously
             _master->foreach([&](Block* b, const diy::Master::ProxyWithLink& cp)
                     {
                         // fprintf(stderr, "ctr %d, rank %d, nparticles %ld\n", ctr, comm_world_rank(), b->particles.size() );
                         TraceBlockRound tbr(*this);
-                        tbr(b, cp);
+                        tbr(b, cp, fake_particles, false);
             });
             break; 
           } 
       } // end while : round loop
 
       epoch_ctr++;
-      MPI_Barrier(comm_world());
-      if (comm_world_rank() == 0){
+      // MPI_Barrier(comm_world());
+      // if (comm_world_rank() == 0){
 
-        fprintf(stderr, "Epochs completed: %d\n", epoch_ctr);
-      }
+      //   dprint("Epochs completed: %d\n", epoch_ctr);
+      // }
 
       // if (epoch_ctr==20) break;
 
@@ -500,7 +581,7 @@ void CPTApp_Sync::exec()
       }
 #endif
         if (comm_world_rank() == 0){
-            dprint("init %d done %d", init, done);
+            dprint("init %d done %d, epoch done %d", init, done, epoch_ctr);
         }
       // if (init == done && done != 0) break; // main loop (outer loop) break condition
       if (init == done) break; // main loop (outer loop) break condition
@@ -553,17 +634,15 @@ void CPTApp_Sync::exec()
       }
 #endif
     } // end while : epoch loop
-    std::vector<int> global_finished_status(finished_status.size());
-    MPI_Reduce(&finished_status[0], &global_finished_status[0],finished_status.size() , MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+    // std::vector<int> global_finished_status(finished_status.size());
+    // MPI_Reduce(&finished_status[0], &global_finished_status[0],finished_status.size() , MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
 
-    if (comm_world_rank() == 0){
-      for (int i=0; i< global_finished_status.size(); i++){
-        if (global_finished_status[i]!=1)
-          dprint("Unfinished pid: %d", i);
-      }
-    }
-
-
+    // if (comm_world_rank() == 0){
+    //   for (int i=0; i< global_finished_status.size(); i++){
+    //     if (global_finished_status[i]!=1)
+    //       dprint("Unfinished pid: %d", i);
+    //   }
+    // }
   }
   else {  // data-parallel particle tracing without redistribution (TOD using MPI_Isend and MPI_Irecv)
     while (1) {

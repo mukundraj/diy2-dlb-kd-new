@@ -70,7 +70,7 @@ def parse_epoch_file(ffullpath):
 
 
 subfolders = ['prediction0/']#, 'prediction1/']
-mems = ['48/']#, '96/', '384/', 'unlim/']
+mems = ['96/']#, '96/', '384/', 'unlim/']
 nprocs = ['8', '16', '32', '64']
 op_image_name = 'balance_'
 

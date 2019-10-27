@@ -27,7 +27,9 @@ public:
     std::vector<Particle>& particles, 
     std::map<int, std::vector<Particle> >& unfinished_particles, 
     std::map<int, std::vector<Particle> >& finished_particles, 
-    const diy::Master::ProxyWithLink &cp);
+    const diy::Master::ProxyWithLink &cp, 
+    std::vector<Particle>& fake_particles, 
+    bool pred_round);
 
   void trace_particles_kdtree(Block&,
       std::vector<Particle>&, // particles to trace

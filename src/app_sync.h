@@ -22,7 +22,9 @@ public: // interface
       std::vector<Particle>&, // particles to trace
       std::map<int, std::vector<Particle> >&, // unfinished particles
       std::map<int, std::vector<Particle> >&, // finished particles
-      const diy::Master::ProxyWithLink &cp
+      const diy::Master::ProxyWithLink &cp, 
+      std::vector<Particle>&, // fake particles for load balance 
+      bool
     ) = 0;
 
   virtual void trace_particles(Block&, 

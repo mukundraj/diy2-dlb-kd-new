@@ -9,7 +9,7 @@
 #include "src/misc.h"
 
 const int max_trace_size = 2048; //2048;
-const float stepsize = 1.0;
+float stepsize = 1.0;
 const int EPOCH_STEPS = 128;
 const int NUM_STEPS = 32; // 50 for small data, 200 for 12GB data
 // const float pred_step = 10.0;
@@ -250,7 +250,10 @@ void CSyncNekApp::trace_particles_core(Block &b,
 									   std::vector<Particle> &particles,
 									   std::map<int, std::vector<Particle>> &unfinished_particles,
 									   std::map<int, std::vector<Particle>> &finished_particles,
-									   const diy::Master::ProxyWithLink &cp)
+									   const diy::Master::ProxyWithLink &cp,
+									   std::vector<Particle> &fake_particles, 
+									   bool pred_round
+									   )
 {
 	const float **vars = (const float **)(b.vars.data());
 	int gst[4], gsz[4], lst[4], lsz[4];
@@ -260,34 +263,49 @@ void CSyncNekApp::trace_particles_core(Block &b,
 
 	// fprintf(stderr, "(%f %f) (%f %f) (%f %f) \n", clb[0], cub[0],  clb[1], cub[1],  clb[2], cub[2]);
 
+	if (pred_round==true){
+		stepsize *= pred_val();
+	}
+
 	BOOST_FOREACH (Particle &p, particles)
 	{
 
 		int steps = NUM_STEPS;
 		int round_steps = 0;
 
+		// dprint("in here %d %d %d", p.num_steps, max_trace_size, p.epoch_finished);
+
 		while (p.num_steps < max_trace_size && !p.epoch_finished)
 		{
 			// int rtn = trace_3D_rk1(gst, gsz, lst, lsz, vars, p.coords, stepsize);
+			Particle tmp = p; // to deal with p out of global issue with cons_kdtree
 			int rtn = trace_3D_rk1_core(clb, cub, lst, lsz, vars, p.coords, stepsize);
 			if (rtn == TRACE_OUT_OF_BOUND)
 			{
 				break; // out of core size
 			}
-			add_workload();
+			if (pred_round == true){
+				// add to fake particle list
+				fake_particles.push_back(tmp);
+
+			}else{
+				add_workload();
+				round_steps++;
+			}
+				p.num_steps++;
+				p.num_esteps++;
+
 			if (rtn == TRACE_CRITICAL_POINT || rtn == TRACE_NO_VALUE)
 			{
 				p.finished = true;
 				// _local_done_epoch ++;
 				break;
 			}
-			p.num_steps++;
-			p.num_esteps++;
-			round_steps++;
+			
 			steps--;
 
 			// if (p.id==204)
-			// 	dprint("stp%d p(%f %f %f)", p.num_steps, p.coords[0], p.coords[1], p.coords[2]);
+				// dprint("stp%d p(%f %f %f)", p.num_steps, p.coords[0], p.coords[1], p.coords[2]);
 
 			if (p.num_esteps == EPOCH_STEPS)
 			{   // && !p.epoch_finished){
@@ -313,7 +331,7 @@ void CSyncNekApp::trace_particles_core(Block &b,
 			// dprint("finished pid %d", p.id);
 			finished_particles[p.home_gid].push_back(p);
 			_local_done++;
-			finished_status[p.id]++;
+			// finished_status[p.id]++;
 			_local_finished_in_this_round ++;
 			if (!p.epoch_finished)
 			{
