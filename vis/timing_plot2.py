@@ -33,7 +33,7 @@ op_image_name = field
 # subfolders = ['prediction0/', 'prediction5/', 'prediction10/', 'prediction20/']
 subfolders = ['prediction0/', 'prediction1/']
 # subfolders = ['baseline/', 'constrained/']
-mems = ['48/', '96/', '384/', 'unlim/']
+mems = ['48/']#, '96/', '384/', 'unlim/']
 
 
 
