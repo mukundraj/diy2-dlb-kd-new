@@ -268,8 +268,43 @@ void CPTApp_Sync::exec()
 #if STORE_PARTICLES
       std::vector<Particle> particles_first, particles_second;
 #endif
-       
-       BOOST_FOREACH(int gid, gids()) {
+
+      // start: sharing all the block boundaries for initial epoch
+      std::vector<int> loc_gids;
+      std::vector<float> loc_bounds;
+      std::vector<int> all_gids(comm_world_size());
+      std::vector<float> all_bounds(comm_world_size() * 6);
+      if (epoch_ctr == 0)
+      {
+        
+        BOOST_FOREACH (int gid, gids())
+        {
+          Block &b = block(gid);
+          // populate loc_gids and loc_bounds
+
+          loc_gids.push_back(b.gid);
+          loc_bounds.insert(std::end(loc_bounds), std::begin(b.nbr_bounds) + 6 * b.nbr_gids.size(), std::end(b.nbr_bounds));
+        }
+
+        // all_gather all_gids and all_bounds
+        MPI_Allgather(&loc_gids[0], 1, MPI_INT, &all_gids[0], 1, MPI_INT,
+                      MPI_COMM_WORLD);
+        MPI_Allgather(&loc_bounds[0], 6, MPI_FLOAT, &all_bounds[0], 6, MPI_FLOAT,
+                      MPI_COMM_WORLD);
+
+        BOOST_FOREACH (int gid, gids())
+        {
+          Block &b = block(gid);
+          // populate all_gids and all_bounds
+
+          b.all_gids = std::move(all_gids);
+          b.all_bounds = std::move(all_bounds);
+        };
+      }
+      // end: sharing block boundary for initial epoch
+
+      BOOST_FOREACH (int gid, gids())
+      {
         Block &b = block(gid);
 
                 // initialize particles at the first time execution
@@ -363,9 +398,10 @@ void CPTApp_Sync::exec()
 
       // compute kd-tree based on currently stored points
       pt_cons_kdtree_exchange(*_master, *_assigner, _divisions, space_only() ? 3 : _num_dims, space_only(), _block_size, _ghost_size, _constrained, false, false);
-      
-      std::vector<int> loc_gids;
-      std::vector<float> loc_bounds;
+
+      // start: sharing all the block boundaries
+      loc_gids.clear();
+      loc_bounds.clear();
 
        BOOST_FOREACH (int gid, gids())
         {
@@ -376,16 +412,13 @@ void CPTApp_Sync::exec()
           loc_bounds.insert(std::end(loc_bounds), std::begin(b.nbr_bounds)+6*b.nbr_gids.size(), std::end(b.nbr_bounds));
         }
 
-        std::vector<int> all_gids(comm_world_size());
-        std::vector<float> all_bounds(comm_world_size()*6);
+        all_gids.resize(comm_world_size());
+        all_bounds.resize(comm_world_size()*6);
         // all_gather all_gids and all_bounds
         MPI_Allgather(&loc_gids[0], 1, MPI_INT, &all_gids[0], 1, MPI_INT,
               MPI_COMM_WORLD);
         MPI_Allgather(&loc_bounds[0], 6, MPI_FLOAT, &all_bounds[0], 6, MPI_FLOAT,
               MPI_COMM_WORLD);
-
-
-        // exit(0);
 
         BOOST_FOREACH (int gid, gids())
         {
@@ -395,7 +428,8 @@ void CPTApp_Sync::exec()
           b.all_gids = std::move(all_gids);
           b.all_bounds = std::move(all_bounds);
         };
-
+        // end: sharing block boundary
+      
 
       // if prediction case, then filter out ghost particles
       if (pred_val()>0){
@@ -436,8 +470,8 @@ void CPTApp_Sync::exec()
         b.get_ghost_load_st_sz(num_dims(), gst, gsz, lst, lsz);
         float clb[4], cub[4]; // core_start and core_size
         b.get_core_st_sz(num_dims(), clb, cub);
-        dprint("gid: %d, (%f %f) (%f %f) (%f %f)// (%d %d %d) (%d %d %d) // (%d %d %d) (%d %d %d", gid, clb[0], cub[0], clb[1], cub[1], clb[2], cub[2], 
-          gst[0], gst[1], gst[2], gsz[0], gsz[1], gsz[2], lst[0], lst[1], lst[2], lsz[0], lsz[1], lsz[2]);
+        // dprint("gid: %d, (%f %f) (%f %f) (%f %f)// (%d %d %d) (%d %d %d) // (%d %d %d) (%d %d %d", gid, clb[0], cub[0], clb[1], cub[1], clb[2], cub[2], 
+        //   gst[0], gst[1], gst[2], gsz[0], gsz[1], gsz[2], lst[0], lst[1], lst[2], lsz[0], lsz[1], lsz[2]);
 
       }
       _local_done_epoch = 0;

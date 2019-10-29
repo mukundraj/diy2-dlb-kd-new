@@ -244,14 +244,11 @@ static int pt2gid_core(Block &b, int id, const float *pt, std::vector<float> &nb
 				gid = cgid;
 				resval = -1*resval;
 		}
-		
-		// if (id==143920)
-		// 	dprint("ingid %d, nbrs %ld, p (%f %f %f) nbrb [%f %f, %f %f, %f %f] [%f %f, %f %f, %f %f] [%f %f, %f %f, %f %f] [%f %f, %f %f, %f %f], cgid %d, dist %f, rval %f, in_ct %d", gid, nbr_gids.size(),pt[0], pt[1], pt[2], \
-		// 	nbr_bounds[0], nbr_bounds[1], nbr_bounds[2], nbr_bounds[3], nbr_bounds[4], nbr_bounds[5], \ 
-		// 	nbr_bounds[6], nbr_bounds[7], nbr_bounds[8], nbr_bounds[9], nbr_bounds[10], nbr_bounds[11], \
-		// 	nbr_bounds[12], nbr_bounds[13], nbr_bounds[14], nbr_bounds[15], nbr_bounds[16], nbr_bounds[17], \
-		// 	nbr_bounds[18], nbr_bounds[19], nbr_bounds[20], nbr_bounds[21], nbr_bounds[22], nbr_bounds[23], cgid, dist, resval, in_count);
+
 	}
+		
+		
+	
 
 	// brute force search over boundaries
 	if (gid == -1)
@@ -266,6 +263,15 @@ static int pt2gid_core(Block &b, int id, const float *pt, std::vector<float> &nb
 				selectedi = i;
 			}
 		}
+	}
+	if (gid==-1){
+			dprint("ingid %d, nbrs %ld, p (%f %f %f) nbrb [%f %f, %f %f, %f %f] [%f %f, %f %f, %f %f] [%f %f, %f %f, %f %f] [%f %f, %f %f, %f %f], cgid %d, dist %f, rval %f, in_ct %d", gid, nbr_gids.size(),pt[0], pt[1], pt[2], \
+			nbr_bounds[0], nbr_bounds[1], nbr_bounds[2], nbr_bounds[3], nbr_bounds[4], nbr_bounds[5], \ 
+			nbr_bounds[6], nbr_bounds[7], nbr_bounds[8], nbr_bounds[9], nbr_bounds[10], nbr_bounds[11], \
+			nbr_bounds[12], nbr_bounds[13], nbr_bounds[14], nbr_bounds[15], nbr_bounds[16], nbr_bounds[17], \
+			nbr_bounds[18], nbr_bounds[19], nbr_bounds[20], nbr_bounds[21], nbr_bounds[22], nbr_bounds[23], cgid, dist, resval, in_count);
+			exit(0);
+
 	}
 
 	// dprint("ingid %d, nbrs %ld, nbrfullsize %ld", gid, nbr_gids.size(), nbr_bounds.size());
