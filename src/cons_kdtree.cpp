@@ -5,6 +5,7 @@
 #include "dlb.h"
 #include "cons_kdtree.h"
 #include "partitioner/partitioner.h"
+#include "src/misc.h"
 
 // constrained k-d tree decomposition with partial data duplication for SciVis'17 submission
 // added by Jiang Zhang
@@ -133,7 +134,7 @@ void extract_cons_kdtree_block(ConstrainedKDTreeBlock* b, const diy::Master::Pro
        blk->nbr_gids.clear();
        for (int i = 0; i < link->size(); ++i)
         { 
-          // fprintf(stderr, "link->bounds().min[0] %d (%f %f, %f %f, %f %f)\n", link->target(i).gid, link->bounds(i).min[0], link->bounds(i).max[0], link->bounds(i).min[1], link->bounds(i).max[1], link->bounds(i).min[2], link->bounds(i).max[2]);
+          // dprint("cgid %d link->bounds().min[0] %d (%f %f, %f %f, %f %f)", cp.gid(), link->target(i).gid, link->bounds(i).min[0], link->bounds(i).max[0], link->bounds(i).min[1], link->bounds(i).max[1], link->bounds(i).min[2], link->bounds(i).max[2]);
           blk->nbr_bounds.push_back(link->bounds(i).min[0]);
           blk->nbr_bounds.push_back(link->bounds(i).max[0]);
           blk->nbr_bounds.push_back(link->bounds(i).min[1]);
@@ -145,7 +146,7 @@ void extract_cons_kdtree_block(ConstrainedKDTreeBlock* b, const diy::Master::Pro
 
           // fprintf(stderr, "targetgid %d\n", link->target(i).gid );
         }
-
+        // dprint("cgid %d bounds (%f %f, %f %f, %f %f)", cp.gid(), link->bounds().min[0], link->bounds().max[0], link->bounds().min[1], link->bounds().max[1], link->bounds().min[2], link->bounds().max[2]);
         blk->nbr_bounds.push_back(link->bounds().min[0]);
         blk->nbr_bounds.push_back(link->bounds().max[0]);
         blk->nbr_bounds.push_back(link->bounds().min[1]);

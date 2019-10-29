@@ -69,6 +69,7 @@ struct TraceBlockSync { // functor for regular particle tracing
           }
         }
         if (!flag) {
+          
           fprintf(stderr, "ERROR: bid is not in cp.link neighbors\n");
           assert (false);
         }
@@ -164,7 +165,7 @@ struct TraceBlockRound { // functor for doing a round of particle tracing in epo
 
         }
         if (!flag) {
-          fprintf(stderr, "ERROR: bid is not in cp.link neighbors\n");
+          fprintf(stderr, "ERROR: bid %d is not in cp.link neighbors\n", bid.gid);
           assert (false);
         }
         // for (size_t ii=0; ii<it->second.size(); ii++){
@@ -253,7 +254,8 @@ void CPTApp_Sync::exec()
     fprintf(stderr, "running...\n");
 
   int count = 0;
-  // finished_status.resize(28);
+  // finished_status.resize(250048);
+
   if (is_kd_tree()) {  // parallel particle tracing with constrained k-d tree decomposition
     int epoch_ctr = 0;
     int all_rounds_ctr = 0; // counts all rounds without resetting
@@ -361,13 +363,43 @@ void CPTApp_Sync::exec()
 
       // compute kd-tree based on currently stored points
       pt_cons_kdtree_exchange(*_master, *_assigner, _divisions, space_only() ? 3 : _num_dims, space_only(), _block_size, _ghost_size, _constrained, false, false);
+      
+      std::vector<int> loc_gids;
+      std::vector<float> loc_bounds;
+
+       BOOST_FOREACH (int gid, gids())
+        {
+          Block &b = block(gid);
+          // populate loc_gids and loc_bounds
+
+          loc_gids.push_back(b.gid);
+          loc_bounds.insert(std::end(loc_bounds), std::begin(b.nbr_bounds)+6*b.nbr_gids.size(), std::end(b.nbr_bounds));
+        }
+
+        std::vector<int> all_gids(comm_world_size());
+        std::vector<float> all_bounds(comm_world_size()*6);
+        // all_gather all_gids and all_bounds
+        MPI_Allgather(&loc_gids[0], 1, MPI_INT, &all_gids[0], 1, MPI_INT,
+              MPI_COMM_WORLD);
+        MPI_Allgather(&loc_bounds[0], 6, MPI_FLOAT, &all_bounds[0], 6, MPI_FLOAT,
+              MPI_COMM_WORLD);
+
+
+        // exit(0);
+
+        BOOST_FOREACH (int gid, gids())
+        {
+          Block &b = block(gid);
+          // populate all_gids and all_bounds
+
+          b.all_gids = std::move(all_gids);
+          b.all_bounds = std::move(all_bounds);
+        };
 
 
       // if prediction case, then filter out ghost particles
       if (pred_val()>0){
         // remove fake particles & update init_epoch
-
-       
 
         _local_init_epoch = 0;
         BOOST_FOREACH (int gid, gids())
@@ -400,16 +432,17 @@ void CPTApp_Sync::exec()
         _local_init_epoch += b.particles.size();
 
 
-        // int gst[4], gsz[4], lst[4], lsz[4];
-        // b.get_ghost_load_st_sz(num_dims(), gst, gsz, lst, lsz);
-        // float clb[4], cub[4]; // core_start and core_size
-        // b.get_core_st_sz(num_dims(), clb, cub);
-        // dprint("gid: %d, (%f %f) (%f %f) (%f %f)// (%d %d %d) (%d %d %d) // (%d %d %d) (%d %d %d", gid, clb[0], cub[0], clb[1], cub[1], clb[2], cub[2], 
-        //   gst[0], gst[1], gst[2], gsz[0], gsz[1], gsz[2], lst[0], lst[1], lst[2], lsz[0], lsz[1], lsz[2]);
+        int gst[4], gsz[4], lst[4], lsz[4];
+        b.get_ghost_load_st_sz(num_dims(), gst, gsz, lst, lsz);
+        float clb[4], cub[4]; // core_start and core_size
+        b.get_core_st_sz(num_dims(), clb, cub);
+        dprint("gid: %d, (%f %f) (%f %f) (%f %f)// (%d %d %d) (%d %d %d) // (%d %d %d) (%d %d %d", gid, clb[0], cub[0], clb[1], cub[1], clb[2], cub[2], 
+          gst[0], gst[1], gst[2], gsz[0], gsz[1], gsz[2], lst[0], lst[1], lst[2], lsz[0], lsz[1], lsz[2]);
 
       }
       _local_done_epoch = 0;
 
+      
       int ctr = 0;
       while(true){ // epoch loop: each iteration is a round
           int init_epoch = 0, done_epoch = 0;
@@ -429,10 +462,10 @@ void CPTApp_Sync::exec()
           bool remote = true;
           _master->exchange(remote);
             
-
+          
            MPI_Barrier(comm_world());
             // fprintf(stderr, "ctr %d done, rank %d\n", ctr, comm_world_rank());
-            MPI_Barrier(comm_world());
+           MPI_Barrier(comm_world());
 
            MPI_Allreduce(&_local_num_particles, &total_particles, 1, MPI_LONG, MPI_SUM, comm_world());
            MPI_Allreduce(&_local_unfinished_particles, &total_unfinished_particles, 1, MPI_LONG, MPI_SUM, comm_world());
@@ -443,12 +476,13 @@ void CPTApp_Sync::exec()
           MPI_Allreduce(&_local_done_epoch, &done_epoch, 1, MPI_INT, MPI_SUM, comm_world());
            MPI_Allreduce(&_local_finished_in_this_round, &finished_in_this_round, 1, MPI_INT, MPI_SUM, comm_world());
 
-          // if (comm_world_rank() == 0){
-          //   dprint("init_epoch %d, done_epoch %d, _local_num_particles %ld, total_particles (tot incoming at st o rnd) %ld, total_unfinished_particles %ld, fin_in_round %d", init_epoch, done_epoch, _local_num_particles, total_particles, total_unfinished_particles, finished_in_this_round);
-          // }
+          if (comm_world_rank() == 0){
+            dprint("init_epoch %d, done_epoch %d, _local_num_particles %ld, total_particles (tot incoming at st o rnd) %ld, total_unfinished_particles %ld, fin_in_round %d, epctr %d", init_epoch, done_epoch, _local_num_particles, total_particles, total_unfinished_particles, finished_in_this_round, epoch_ctr);
+          }
+
          
           // ctr++;
-          // if (ctr==1000 ) break;
+          // if (ctr== 40) break;
 
 
 
@@ -634,13 +668,13 @@ void CPTApp_Sync::exec()
       }
 #endif
     } // end while : epoch loop
+
     // std::vector<int> global_finished_status(finished_status.size());
     // MPI_Reduce(&finished_status[0], &global_finished_status[0],finished_status.size() , MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
-
     // if (comm_world_rank() == 0){
     //   for (int i=0; i< global_finished_status.size(); i++){
     //     if (global_finished_status[i]!=1)
-    //       dprint("Unfinished pid: %d", i);
+    //       dprint("Unfinished pid: %d %d", i, global_finished_status[i]);
     //   }
     // }
   }

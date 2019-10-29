@@ -24,6 +24,9 @@ public:
   int lload[4], uload[4]; // bounds of data loading (added by Jiang)
   std::vector<float> nbr_bounds; // added by mraj
   std::vector<int> nbr_gids; // added by mraj
+    std::vector<int> all_gids; // global gid list added by mraj
+  std::vector<float> all_bounds; // global bounds list added by mraj
+ 
   // diy::RegularLink<CBounds> cons_kdtree_link; // added by mraj
 
 

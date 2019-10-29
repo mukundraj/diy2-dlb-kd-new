@@ -110,7 +110,7 @@ protected:
   std::vector<float> _round_balance;
   std::vector<int> _all_time_round_num;
 
-  std::vector<int> finished_status; // for debugging
+  // std::vector<int> finished_status; // for debugging
   int _local_finished_in_this_round;
 
   bool _constrained;

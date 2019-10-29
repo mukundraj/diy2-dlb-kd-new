@@ -489,21 +489,21 @@ void CPTApp::write_output_file()
     stream << "unlim/gantt_"<<std::to_string(comm_world_size())<<"_"<< comm_world_rank() << ".csv";
   }
   std::ofstream ofile;  
-  ofile.open(stream.str().c_str());
+  // ofile.open(stream.str().c_str());
  
-  int size = _timestamps.size();
+  // int size = _timestamps.size();
 
-  for (int i = 0; i < size-1; i ++) {
-    float t = _timestamps[i+1] - _timestamps[i];
-    if (i == size - 2) 
-      ofile << _timecategories[i] << ":" << t;
-    else 
-      ofile << _timecategories[i] << ":" << t << ",";
-  }
+  // for (int i = 0; i < size-1; i ++) {
+  //   float t = _timestamps[i+1] - _timestamps[i];
+  //   if (i == size - 2) 
+  //     ofile << _timecategories[i] << ":" << t;
+  //   else 
+  //     ofile << _timecategories[i] << ":" << t << ",";
+  // }
 
   ofile.close();
 
-  fprintf(stderr, "rank %d write gantt finished\n", comm_world_rank());
+  // fprintf(stderr, "rank %d write gantt finished\n", comm_world_rank());
 
   if (comm_world_rank() == 0) {
     std::ofstream ofile2;  

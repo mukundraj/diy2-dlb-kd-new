@@ -7,8 +7,9 @@
 #include "common/lerp.h"
 #include "src/utils.hpp"
 #include "src/misc.h"
+#include <limits>
 
-const int max_trace_size = 2048; //2048;
+const int max_trace_size = 1024; //2048;
 float stepsize = 1.0;
 const int EPOCH_STEPS = 128;
 const int NUM_STEPS = 32; // 50 for small data, 200 for 12GB data
@@ -39,6 +40,7 @@ void CSyncNekApp::initialize_particles(Block &b,
 	const int stride[3] = {128, 128, 128};
 	// const int stride[3] = {4, 4, 4};
 	// const int stride[3] = {8, 8, 8};
+	// const int stride[3] = {64, 64, 64};	
 	const float gap[3] = {1.f / (stride[0] - 1) * (float)(domain_size()[0] - 1),
 						  1.f / (stride[1] - 1) * (float)(domain_size()[1] - 1),
 						  1.f / (stride[2] - 1) * (float)(domain_size()[2] - 1)};
@@ -181,12 +183,13 @@ double distance_new(const float *pt, int i, std::vector<float> &nbr_bounds, bool
 	double res = 0;
 
 	for (int dim=0; dim<3; dim++){
-		double diff = 0, d;
+		double diff = 0, d, dupper;
 
 		d = (double) nbr_bounds[i*6+dim*2] - (double) pt[dim];
 		if (d>diff) diff = d;
-		d = (double) pt[dim] - (double) nbr_bounds[i*6+dim*2+1];
-		if (d>diff) diff = d;
+		dupper = (double) pt[dim] - (double) nbr_bounds[i*6+dim*2+1];
+		if (dupper>diff) diff = dupper;
+		if (dupper==0) diff = std::numeric_limits<float>::min();
 
 		res += diff*diff;
 	}
@@ -214,33 +217,59 @@ static int pt2gid_core(Block &b, int id, const float *pt, std::vector<float> &nb
 	int in_count = 0;
 	int selectedi = -1;
 	double resval=1;
+	std::vector<int> ngids;
 	for (int i=0; i<nbr_gids.size(); i++){
 
 		if (distance_new(pt, i, nbr_bounds, false, resval)==0){
 			in_count++;
 			gid = nbr_gids[i];
 			selectedi = i;
+			ngids.push_back(gid);
 		}
 		
 	}
 
+	if (in_count > 1){
+		dprint("assert %d, (%f %f %f), %d %d, cgid %d", in_count, pt[0], pt[1], pt[2], ngids[0], ngids[1], cgid);
+	}
+	assert(in_count < 2); // to check for particle in block corner case (to be fixed)
+
 	int cur_idx = (int) nbr_gids.size();
 	double dist;
-	dist = distance_new(pt, cur_idx, nbr_bounds, true, resval);
-	if (dist == 0 ){
-			in_count++;
-			in_count *= -1;
-			gid = cgid;
-			resval = -1*resval;
+	if (gid==-1){
+		dist = distance_new(pt, cur_idx, nbr_bounds, true, resval);
+		if (dist == 0 ){
+				in_count++;
+				in_count *= -1;
+				gid = cgid;
+				resval = -1*resval;
+		}
+		
+		// if (id==143920)
+		// 	dprint("ingid %d, nbrs %ld, p (%f %f %f) nbrb [%f %f, %f %f, %f %f] [%f %f, %f %f, %f %f] [%f %f, %f %f, %f %f] [%f %f, %f %f, %f %f], cgid %d, dist %f, rval %f, in_ct %d", gid, nbr_gids.size(),pt[0], pt[1], pt[2], \
+		// 	nbr_bounds[0], nbr_bounds[1], nbr_bounds[2], nbr_bounds[3], nbr_bounds[4], nbr_bounds[5], \ 
+		// 	nbr_bounds[6], nbr_bounds[7], nbr_bounds[8], nbr_bounds[9], nbr_bounds[10], nbr_bounds[11], \
+		// 	nbr_bounds[12], nbr_bounds[13], nbr_bounds[14], nbr_bounds[15], nbr_bounds[16], nbr_bounds[17], \
+		// 	nbr_bounds[18], nbr_bounds[19], nbr_bounds[20], nbr_bounds[21], nbr_bounds[22], nbr_bounds[23], cgid, dist, resval, in_count);
+	}
+
+	// brute force search over boundaries
+	if (gid == -1)
+	{
+		for (size_t i = 0; i < b.all_gids.size(); i++)
+		{
+
+			if (distance_new(pt, i, b.all_bounds, false, resval) == 0)
+			{
+				in_count++;
+				gid = b.all_gids[i];
+				selectedi = i;
+			}
+		}
 	}
 
 	// dprint("ingid %d, nbrs %ld, nbrfullsize %ld", gid, nbr_gids.size(), nbr_bounds.size());
-
-	// dprint("ingid %d, nbrs %ld, p (%f %f %f) nbrb [%f %f, %f %f, %f %f] [%f %f, %f %f, %f %f] [%f %f, %f %f, %f %f] [%f %f, %f %f, %f %f], cgid %d, dist %f, rval %f, in_ct %d", gid, nbr_bounds.size(),pt[0], pt[1], pt[2], \
-	// nbr_bounds[0], nbr_bounds[1], nbr_bounds[2], nbr_bounds[3], nbr_bounds[4], nbr_bounds[5], \ 
-	// nbr_bounds[6], nbr_bounds[7], nbr_bounds[8], nbr_bounds[9], nbr_bounds[10], nbr_bounds[11], \
-	// nbr_bounds[12], nbr_bounds[13], nbr_bounds[14], nbr_bounds[15], nbr_bounds[16], nbr_bounds[17], \
-	// nbr_bounds[18], nbr_bounds[19], nbr_bounds[20], nbr_bounds[21], nbr_bounds[22], nbr_bounds[23], cgid, dist, resval, in_count);
+	
 	// assert(in_count==1); //(only one nbr dist should be zero) 
 	return gid;
 	
@@ -279,11 +308,14 @@ void CSyncNekApp::trace_particles_core(Block &b,
 		{
 			// int rtn = trace_3D_rk1(gst, gsz, lst, lsz, vars, p.coords, stepsize);
 			Particle tmp = p; // to deal with p out of global issue with cons_kdtree
+			
 			int rtn = trace_3D_rk1_core(clb, cub, lst, lsz, vars, p.coords, stepsize);
+
 			if (rtn == TRACE_OUT_OF_BOUND)
 			{
 				break; // out of core size
 			}
+			
 			if (pred_round == true){
 				// add to fake particle list
 				fake_particles.push_back(tmp);
@@ -302,16 +334,22 @@ void CSyncNekApp::trace_particles_core(Block &b,
 				break;
 			}
 			
-			steps--;
+			if (pred_round==true)
+				steps -= pred_val();
+			else
+				steps --;
 
-			// if (p.id==204)
-				// dprint("stp%d p(%f %f %f)", p.num_steps, p.coords[0], p.coords[1], p.coords[2]);
+			// if (p.id==143920)
+			// 	dprint("stp %d p(%f %f %f) %d %d %d, (%f %f) (%f %f) (%f %f), rtn %d %d", p.num_steps, p.coords[0], p.coords[1], p.coords[2], p.num_steps, p.finished, cp.gid(), clb[0], cub[0],  clb[1], cub[1],  clb[2], cub[2], rtn, TRACE_OUT_OF_BOUND);
+
+			
 
 			if (p.num_esteps == EPOCH_STEPS)
 			{   // && !p.epoch_finished){
 				// if epoch is done, then kd-tree rebalance, else continue with same partition
 				_local_done_epoch++;
 				p.epoch_finished = true;
+				// finished_status[p.id]++;  
 				p.num_esteps = 0;
 				break;
 			}
@@ -336,6 +374,7 @@ void CSyncNekApp::trace_particles_core(Block &b,
 			if (!p.epoch_finished)
 			{
 				p.epoch_finished = true;
+				// finished_status[p.id]++;
 				_local_done_epoch++;
 			}
 			// fprintf(stderr, " F (pid (%d) %d %d, %d)\n", p.id,  bp.num_steps, p.finished,.gid);
@@ -343,13 +382,16 @@ void CSyncNekApp::trace_particles_core(Block &b,
 		else
 		{
 
-			// if (p.id==204)
-			// 	dprint("piddd %d, %f %f %f, %d %d %d", p.id, p.coords[0], p.coords[1], p.coords[2], p.num_steps, p.finished, b.gid);
+			
 			// int dst_gid = bound_gid(pt2gid(p.coords)); // TODO
 			// int dst_gid = bound_gid(pt2gid_core(p.id, p.coords, b.nbr_bounds, b.nbr_gids, cp.gid())); // TODO
 			
 			// int dst_gid = pt2gid_core_old(p.id, p.coords, b.nbr_bounds, b.nbr_gids, cp.gid()); // TODO
 			int dst_gid = pt2gid_core(b, p.id, p.coords, b.nbr_bounds, b.nbr_gids, cp.gid()); // TODO
+
+			// if (p.id==166396)
+			if (dst_gid==-1)
+				dprint("piddd %d, %f %f %f, %d %d %d, dst %d, pval %d", p.id, p.coords[0], p.coords[1], p.coords[2], p.num_steps, p.finished, b.gid, dst_gid, pred_val());
 
 				//  RCLink*  link      = static_cast<RCLink*>(cp.link());
 				//  fprintf(stderr, "size %d\n", link->size());
