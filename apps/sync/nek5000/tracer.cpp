@@ -298,6 +298,7 @@ void CSyncNekApp::trace_particles_core(Block &b,
 
 	// fprintf(stderr, "(%f %f) (%f %f) (%f %f) \n", clb[0], cub[0],  clb[1], cub[1],  clb[2], cub[2]);
 
+	stepsize = 1.0;
 	if (pred_round==true){
 		stepsize *= pred_val();
 	}
@@ -330,8 +331,7 @@ void CSyncNekApp::trace_particles_core(Block &b,
 				add_workload();
 				round_steps++;
 			}
-				p.num_steps++;
-				p.num_esteps++;
+				
 
 			if (rtn == TRACE_CRITICAL_POINT || rtn == TRACE_NO_VALUE)
 			{
@@ -340,17 +340,22 @@ void CSyncNekApp::trace_particles_core(Block &b,
 				break;
 			}
 			
-			if (pred_round==true)
+			if (pred_round==true){
 				steps -= pred_val();
-			else
+				p.num_steps += pred_val();
+				p.num_esteps += pred_val();
+			}
+			else{
 				steps --;
-
+				p.num_steps++;
+				p.num_esteps++;
+			}
 			// if (p.id==143920)
 			// 	dprint("stp %d p(%f %f %f) %d %d %d, (%f %f) (%f %f) (%f %f), rtn %d %d", p.num_steps, p.coords[0], p.coords[1], p.coords[2], p.num_steps, p.finished, cp.gid(), clb[0], cub[0],  clb[1], cub[1],  clb[2], cub[2], rtn, TRACE_OUT_OF_BOUND);
 
 			
 
-			if (p.num_esteps == EPOCH_STEPS)
+			if (p.num_esteps >= EPOCH_STEPS)
 			{   // && !p.epoch_finished){
 				// if epoch is done, then kd-tree rebalance, else continue with same partition
 				_local_done_epoch++;

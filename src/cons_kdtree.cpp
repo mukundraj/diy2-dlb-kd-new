@@ -129,11 +129,12 @@ void extract_cons_kdtree_block(ConstrainedKDTreeBlock* b, const diy::Master::Pro
     // kdtree_master.foreach([&](Block* b, const diy::Master::ProxyWithLink& cp) { 
       RCLink*  link      = static_cast<RCLink*>(cp.link());
        // fprintf(stderr, "gid %d, Lsize %d\n", cp.gid(), link->size());
-       
-       blk->nbr_bounds.clear();
-       blk->nbr_gids.clear();
-       for (int i = 0; i < link->size(); ++i)
-        { 
+      if (aux->constrained)
+      {
+        blk->nbr_bounds.clear();
+        blk->nbr_gids.clear();
+        for (int i = 0; i < link->size(); ++i)
+        {
           // dprint("cgid %d link->bounds().min[0] %d (%f %f, %f %f, %f %f)", cp.gid(), link->target(i).gid, link->bounds(i).min[0], link->bounds(i).max[0], link->bounds(i).min[1], link->bounds(i).max[1], link->bounds(i).min[2], link->bounds(i).max[2]);
           blk->nbr_bounds.push_back(link->bounds(i).min[0]);
           blk->nbr_bounds.push_back(link->bounds(i).max[0]);
@@ -153,16 +154,45 @@ void extract_cons_kdtree_block(ConstrainedKDTreeBlock* b, const diy::Master::Pro
         blk->nbr_bounds.push_back(link->bounds().max[1]);
         blk->nbr_bounds.push_back(link->bounds().min[2]);
         blk->nbr_bounds.push_back(link->bounds().max[2]);
-  // });
+      }else{
 
-  /*blk->particles.insert(blk->particles.end(), b->points.begin(), b->points.end());
+        exit(0);
+        // blk->nbr_bounds.clear();
+        // blk->nbr_gids.clear();
+        // for (int i = 0; i < link->size(); ++i)
+        // {
+        //   // dprint("cgid %d link->bounds().min[0] %d (%f %f, %f %f, %f %f)", cp.gid(), link->target(i).gid, link->bounds(i).min[0], link->bounds(i).max[0], link->bounds(i).min[1], link->bounds(i).max[1], link->bounds(i).min[2], link->bounds(i).max[2]);
+        //   blk->nbr_bounds.push_back(link->core(i).min[0]);
+        //   blk->nbr_bounds.push_back(link->core(i).max[0]);
+        //   blk->nbr_bounds.push_back(link->core(i).min[1]);
+        //   blk->nbr_bounds.push_back(link->core(i).max[1]);
+        //   blk->nbr_bounds.push_back(link->core(i).min[2]);
+        //   blk->nbr_bounds.push_back(link->core(i).max[2]);
+
+        //   blk->nbr_gids.push_back(link->target(i).gid);
+
+        //   // fprintf(stderr, "targetgid %d\n", link->target(i).gid );
+        // }
+        // // dprint("cgid %d bounds (%f %f, %f %f, %f %f)", cp.gid(), link->bounds().min[0], link->bounds().max[0], link->bounds().min[1], link->bounds().max[1], link->bounds().min[2], link->bounds().max[2]);
+        // blk->nbr_bounds.push_back(link->core().min[0]);
+        // blk->nbr_bounds.push_back(link->core().max[0]);
+        // blk->nbr_bounds.push_back(link->core().min[1]);
+        // blk->nbr_bounds.push_back(link->core().max[1]);
+        // blk->nbr_bounds.push_back(link->core().min[2]);
+        // blk->nbr_bounds.push_back(link->core().max[2]);
+
+      }
+      // });
+
+      /*blk->particles.insert(blk->particles.end(), b->points.begin(), b->points.end());
   BOOST_FOREACH (Particle &p, blk->particles) {
     p.home_gid = blk->gid;
   }*/
 
-  if (aux->async) {
-    blk->after_kdtree = true;
-    blk->num_particles_initialized = 0;
+      if (aux->async)
+      {
+        blk->after_kdtree = true;
+        blk->num_particles_initialized = 0;
   }
 //fprintf(stderr, "extract: dim = %d, b->points.size() = %d\n", dim, b->points.size());
   if (aux->first) {  // get lb, ub, glb, gub, lload, uload
